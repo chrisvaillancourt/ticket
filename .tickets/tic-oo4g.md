@@ -1,6 +1,6 @@
 ---
 id: tic-oo4g
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-07-16T19:48:41Z
@@ -19,3 +19,9 @@ Refactor create to place separators before optional Markdown sections and emit f
 ## Acceptance Criteria
 
 Cover all eight combinations of description, design, and acceptance for create. Cover minimal, fully populated, and missing-created_at Beads records. Verify one terminal newline, no double terminal newline, no trailing whitespace, full Behave suite, Bash syntax, and isolated reproduction.
+
+## Notes
+
+**2026-07-16T19:58:48Z**
+
+Implemented in f50f1dc. Verification passed: 12 features, 135 scenarios, and 881 steps; Bash syntax checks; git diff --check; isolated byte-level create and multi-record migration reproduction, including newline-terminated content and missing or blank created_at.
