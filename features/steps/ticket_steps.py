@@ -57,6 +57,21 @@ Description
     return ticket_path
 
 
+def assert_normalized_trailing_whitespace(ticket_path):
+    """Assert a ticket ends in one LF and has no line-end whitespace."""
+    content = ticket_path.read_bytes()
+    assert content.endswith(b'\n'), f"Ticket does not end with a newline: {ticket_path}"
+    assert not content.endswith(b'\n\n'), f"Ticket ends with more than one newline: {ticket_path}"
+
+    lines_with_trailing_whitespace = [
+        line_number
+        for line_number, line in enumerate(content.split(b'\n')[:-1], start=1)
+        if line.endswith((b' ', b'\t', b'\r'))
+    ]
+    assert not lines_with_trailing_whitespace, \
+        f"Ticket has trailing whitespace on lines {lines_with_trailing_whitespace}: {ticket_path}"
+
+
 # ============================================================================
 # Given Steps
 # ============================================================================
@@ -78,6 +93,14 @@ def step_tickets_dir_not_exist(context):
     if tickets_dir.exists():
         import shutil
         shutil.rmtree(tickets_dir)
+
+
+@given(r'a Beads issues file containing:')
+def step_beads_issues_file(context):
+    """Write the scenario JSONL to the location expected by migrate-beads."""
+    beads_dir = Path(context.test_dir) / '.beads'
+    beads_dir.mkdir(parents=True, exist_ok=True)
+    (beads_dir / 'issues.jsonl').write_text(context.text.strip() + '\n')
 
 
 @given(r'a ticket exists with ID "(?P<ticket_id>[^"]+)" and title "(?P<title>[^"]+)" with priority (?P<priority>\d+)')
@@ -454,6 +477,30 @@ def step_created_ticket_has_timestamp(context):
     pattern = r'^created:\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z'
     assert re.search(pattern, content, re.MULTILINE), \
         f"No valid created timestamp found\nContent: {content}"
+
+
+@then(r'the created ticket file should end with exactly one newline and have no trailing whitespace')
+def step_created_ticket_has_normalized_whitespace(context):
+    """Assert the most recently created ticket has normalized line endings."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{context.last_created_id}.md'
+    assert_normalized_trailing_whitespace(ticket_path)
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should end with exactly one newline and have no trailing whitespace')
+def step_ticket_has_normalized_whitespace(context, ticket_id):
+    """Assert the specified ticket has normalized line endings."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    assert ticket_path.exists(), f"Ticket file {ticket_path} does not exist"
+    assert_normalized_trailing_whitespace(ticket_path)
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should not have field "(?P<field>[^"]+)"')
+def step_ticket_does_not_have_field(context, ticket_id, field):
+    """Assert a YAML frontmatter field is absent."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    assert not re.search(rf'^{re.escape(field)}:', content, re.MULTILINE), \
+        f"Field '{field}' unexpectedly found in ticket\nContent: {content}"
 
 
 @then(r'ticket "(?P<ticket_id>[^"]+)" should have field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')

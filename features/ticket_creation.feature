@@ -96,3 +96,19 @@ Feature: Ticket Creation
     When I run "ticket create 'First ticket'"
     Then the command should succeed
     And the tickets directory should exist
+
+  Scenario Outline: Generated ticket files have normalized trailing whitespace
+    When I run "ticket create 'Writer <case>' <options>"
+    Then the command should succeed
+    And the created ticket file should end with exactly one newline and have no trailing whitespace
+
+    Examples:
+      | case                   | options                                                    |
+      | title only             |                                                            |
+      | description            | -d $'Description text\n'                                   |
+      | design                 | --design $'Design text\n'                                  |
+      | acceptance             | --acceptance $'Acceptance text\n'                          |
+      | description and design | -d 'Description text' --design $'Design text\n'            |
+      | description and accept | -d 'Description text' --acceptance $'Acceptance text\n'    |
+      | design and accept      | --design 'Design text' --acceptance $'Acceptance text\n'   |
+      | all sections           | -d 'Description text' --design 'Design text' --acceptance $'Acceptance text\n' |

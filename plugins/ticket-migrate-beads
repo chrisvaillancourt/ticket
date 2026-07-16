@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tk-plugin: Import tickets from .beads/issues.jsonl
-# tk-plugin-version: 1.0.0
+# tk-plugin-version: 1.0.1
 set -euo pipefail
 
 jsonl=".beads/issues.jsonl"
@@ -24,10 +24,19 @@ mkdir -p "$TICKETS_DIR"
 jq -r '
     def by_type(t): [.dependencies[]? | select(.type == t) | .depends_on_id];
     def to_array: if length == 0 then "[]" else "[" + (map("\(.)") | join(", ")) + "]" end;
+    def populated: . != null and (tostring | test("\\S"));
+    def strip_final_newlines: sub("([\\r]?\\n)+$"; "");
 
     (by_type("blocks") | to_array) as $deps |
     (by_type("related") | to_array) as $links |
     (by_type("parent-child") | first // null) as $parent |
+    ([
+        "# \((.title // "Untitled") | strip_final_newlines)",
+        (if (.description? | populated) then "\(.description | strip_final_newlines)" else empty end),
+        (if (.design? | populated) then "## Design\n\n\(.design | strip_final_newlines)" else empty end),
+        (if (.acceptance_criteria? | populated) then "## Acceptance Criteria\n\n\(.acceptance_criteria | strip_final_newlines)" else empty end),
+        (if (.notes? | populated) then "## Notes\n\n\(.notes | strip_final_newlines)" else empty end)
+    ] | join("\n\n")) as $body |
 
     "<<<FILE:\(.id)>>>\n" +
     "---\n" +
@@ -35,18 +44,14 @@ jq -r '
     "status: \(.status // "open")\n" +
     "deps: \($deps)\n" +
     "links: \($links)\n" +
-    "created: \(.created_at // "")\n" +
+    (if (.created_at? | populated) then "created: \(.created_at)\n" else "" end) +
     "type: \(.issue_type // "task")\n" +
     "priority: \(.priority // 2)\n" +
     (if .assignee and .assignee != "" then "assignee: \(.assignee)\n" else "" end) +
     (if .external_ref and .external_ref != "" then "external-ref: \(.external_ref)\n" else "" end) +
     (if $parent then "parent: \($parent)\n" else "" end) +
     "---\n" +
-    "# \(.title // "Untitled")\n\n" +
-    (if .description and .description != "" then "\(.description)\n\n" else "" end) +
-    (if .design and .design != "" then "## Design\n\n\(.design)\n\n" else "" end) +
-    (if .acceptance_criteria and .acceptance_criteria != "" then "## Acceptance Criteria\n\n\(.acceptance_criteria)\n\n" else "" end) +
-    (if .notes and .notes != "" then "## Notes\n\n\(.notes)\n\n" else "" end)
+    $body
 ' "$jsonl" | awk -v dir="$TICKETS_DIR" '
     /^<<<FILE:.*>>>$/ {
         if (file) close(file)

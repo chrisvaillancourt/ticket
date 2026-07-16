@@ -5,6 +5,10 @@
 ### Changed
 - Extracted `edit`, `ls`, `query`, and `migrate-beads` commands to plugins (ticket-extras)
 
+### Fixed
+- `create` now writes ticket files with exactly one final newline and no blank line at EOF
+- `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
+
 ### Added
 - Plugin system: executables named `tk-<cmd>` or `ticket-<cmd>` in PATH are invoked automatically
 - `super` command to bypass plugins and run built-in commands directly
@@ -18,7 +22,7 @@
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
-- ticket-migrate-beads 1.0.0: Import tickets from .beads/issues.jsonl (extracted from core)
+- ticket-migrate-beads 1.0.1: Import tickets from .beads/issues.jsonl with normalized trailing whitespace (extracted from core)
 
 ## [0.3.2] - 2026-02-03
 

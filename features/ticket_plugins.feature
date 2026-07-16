@@ -83,3 +83,42 @@ Feature: Plugin System
     When I run "ticket create \"Normal ticket\""
     Then the command should succeed
     And the output should match a ticket ID pattern
+
+  Scenario: Migrate a minimal Beads record
+    Given a clean tickets directory
+    And a Beads issues file containing:
+      """
+      {"id":"beads-min","title":"Minimal","created_at":"2026-07-16T10:00:00Z"}
+      """
+    When I run "ticket migrate-beads"
+    Then the command should succeed
+    And ticket "beads-min" should have field "created" with value "2026-07-16T10:00:00Z"
+    And ticket "beads-min" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Migrate a fully populated Beads record
+    Given a clean tickets directory
+    And a Beads issues file containing:
+      """
+      {"id":"beads-full","title":"Full record","status":"in_progress","created_at":"2026-07-16T11:00:00Z","issue_type":"feature","priority":1,"assignee":"Ada","external_ref":"gh-123","description":"Description text","design":"Design text","acceptance_criteria":"Acceptance text","notes":"Notes text\n","dependencies":[{"type":"blocks","depends_on_id":"beads-dep"},{"type":"related","depends_on_id":"beads-link"},{"type":"parent-child","depends_on_id":"beads-parent"}]}
+      {"id":"beads-companion","title":"Companion","created_at":"2026-07-16T12:00:00Z"}
+      """
+    When I run "ticket migrate-beads"
+    Then the command should succeed
+    And ticket "beads-full" should have field "status" with value "in_progress"
+    And ticket "beads-full" should have field "parent" with value "beads-parent"
+    And ticket "beads-full" should contain "## Design"
+    And ticket "beads-full" should contain "## Acceptance Criteria"
+    And ticket "beads-full" should contain "## Notes"
+    And ticket "beads-full" should end with exactly one newline and have no trailing whitespace
+    And ticket "beads-companion" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Migrate a Beads record without a creation timestamp
+    Given a clean tickets directory
+    And a Beads issues file containing:
+      """
+      {"id":"beads-no-created","title":"No timestamp","description":"Body"}
+      """
+    When I run "ticket migrate-beads"
+    Then the command should succeed
+    And ticket "beads-no-created" should not have field "created"
+    And ticket "beads-no-created" should end with exactly one newline and have no trailing whitespace

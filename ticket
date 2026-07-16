@@ -69,6 +69,16 @@ _iso_date() {
     date -u +%Y-%m-%dT%H:%M:%SZ
 }
 
+# Strip terminal line breaks so the writer controls the final newline.
+_strip_trailing_newlines() {
+    local value="$1"
+    while [[ "$value" == *$'\n' ]]; do
+        value="${value%$'\n'}"
+        [[ "$value" == *$'\r' ]] && value="${value%$'\r'}"
+    done
+    printf '%s' "$value"
+}
+
 # Portable sed -i (BSD requires -i '', GNU uses -i)
 _sed_i() {
     local file="$1"
@@ -188,6 +198,10 @@ cmd_create() {
     fi
 
     title="${title:-Untitled}"
+    title=$(_strip_trailing_newlines "$title")
+    description=$(_strip_trailing_newlines "$description")
+    design=$(_strip_trailing_newlines "$design")
+    acceptance=$(_strip_trailing_newlines "$acceptance")
     local id
     id=$(generate_id)
     local file="$TICKETS_DIR/${id}.md"
@@ -195,39 +209,33 @@ cmd_create() {
     now=$(_iso_date)
 
     {
-        echo "---"
-        echo "id: $id"
-        echo "status: open"
-        echo "deps: []"
-        echo "links: []"
-        echo "created: $now"
-        echo "type: $issue_type"
-        echo "priority: $priority"
-        [[ -n "$assignee" ]] && echo "assignee: $assignee"
-        [[ -n "$external_ref" ]] && echo "external-ref: $external_ref"
-        [[ -n "$parent" ]] && echo "parent: $parent"
+        printf '%s\n' \
+            "---" \
+            "id: $id" \
+            "status: open" \
+            "deps: []" \
+            "links: []" \
+            "created: $now" \
+            "type: $issue_type" \
+            "priority: $priority"
+        [[ -n "$assignee" ]] && printf 'assignee: %s\n' "$assignee"
+        [[ -n "$external_ref" ]] && printf 'external-ref: %s\n' "$external_ref"
+        [[ -n "$parent" ]] && printf 'parent: %s\n' "$parent"
         if [[ -n "$tags" ]]; then
-            echo "tags: [${tags//,/, }]"
+            printf 'tags: [%s]\n' "${tags//,/, }"
         fi
-        echo "---"
-        echo "# $title"
-        echo ""
+        printf '%s\n' "---"
+        printf '# %s' "$title"
         if [[ -n "$description" ]]; then
-            echo "$description"
-            echo ""
+            printf '\n\n%s' "$description"
         fi
         if [[ -n "$design" ]]; then
-            echo "## Design"
-            echo ""
-            echo "$design"
-            echo ""
+            printf '\n\n## Design\n\n%s' "$design"
         fi
         if [[ -n "$acceptance" ]]; then
-            echo "## Acceptance Criteria"
-            echo ""
-            echo "$acceptance"
-            echo ""
+            printf '\n\n## Acceptance Criteria\n\n%s' "$acceptance"
         fi
+        printf '\n'
     } > "$file"
 
     echo "$id"
