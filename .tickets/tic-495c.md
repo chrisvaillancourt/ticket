@@ -1,6 +1,6 @@
 ---
 id: tic-495c
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-07-22T18:37:59Z
@@ -12,7 +12,7 @@ tags: [release, distribution, design]
 ---
 # Choose a fork-native release and distribution strategy
 
-The upstream project automates GitHub Releases, a Homebrew tap, and AUR packages in one privileged workflow. That shape is not automatically correct for this fork. The fork first needs a clear audience and support promise: personal development checkout, a small set of trusted machines, or a generally installable public CLI. Distribution choices should follow that need rather than copying upstream credentials and package names.
+This fork currently serves its maintainer and a small set of trusted development machines. It is not committing to compatibility with the upstream release architecture or to being a generally packaged public CLI.
 
 Options to compare:
 - no formal releases; documented local/source installation only
@@ -32,21 +32,21 @@ Resources:
 
 ## Design
 
-Prefer staged adoption. Immediate use should rely on the local-install ticket. The likely first public channel is a manually initiated GitHub Release owned by this fork, with contents: write limited to the release job and an environment approval gate. A personal Homebrew tap is likely the next useful convenience for macOS. AUR should be optional and renamed rather than attempting to update upstream-owned package names.
+Immediate distribution is a documented local checkout plus the reversible symlink installer in `tic-pont`. Use exact commits when identifying an installed version. There is no hosted release workflow, package-manager publication, or external publisher credential.
 
-Compare credential models, rollback, provenance/checksums, action pinning, tag/version ownership, plugin packaging, cross-platform support, maintenance cost, and how fork-only release commits stay separate from upstream-exportable code changes. Consider whether a release workflow is necessary at all while the fork is primarily for personal use.
+Reconsider a manual GitHub Release only when the fork must be installed on a machine that should not maintain a Git checkout or when another user requests a stable downloadable version. At that point create a new implementation ticket for a manually dispatched, approval-gated workflow that publishes a deterministic runtime bundle containing `tk`, the curated plugins and aliases, LICENSE, README, and SHA256SUMS. Use fork-owned, fork-qualified tags such as `v0.3.3-cv.1`; do not rely on mutable auto-generated source archives as the canonical artifact.
+
+Homebrew is deferred until repeated one-command macOS installation demand exists. AUR is deferred until there is an identified Linux maintainer and package demand. Install scripts that execute remotely, mise/asdf integration, npm/PyPI/Cargo wrappers, Deb/RPM, and Nix are out of scope until a maintainer and concrete demand exist.
 
 ## Acceptance Criteria
 
-A decision record names the target users and selects an immediate, medium-term, and explicitly deferred distribution path. It explains why the upstream combined Homebrew/AUR workflow is reused, replaced, or omitted. It defines tag/version ownership, artifact contents, checksum/provenance expectations, required permissions/credentials, approval gates, rollback, and package naming. It includes a recommendation for GitHub Releases, Homebrew, AUR, source installation, and at least one version-manager or install-script alternative. No credentials or release tags are created during design.
+The ticket records the trusted-machine target audience, selects local checkout installation now, gives concrete reconsideration triggers for a fork-owned manual GitHub Release, and explicitly defers package-manager/version-manager/remote-script channels. The inherited combined Homebrew/AUR release path is removed rather than reused. Any future hosted release must use fork-owned qualified tags, deterministic artifacts and checksums, least-privilege permissions, an approval gate, and documented rollback. No credentials, release workflow, or release tags are created by this decision.
 
 ## Notes
 
 **2026-07-22T18:40:37Z**
 
-2026-07-22 research recommendation: first decide whether this fork is only an upstream patch queue or a maintained distribution. If it is only a patch queue, publish no independent releases and use exact commit SHAs. If it needs distribution now, disable the inherited Release workflow and create one manual GitHub prerelease from a reviewed fork commit, using a fork-qualified version such as v0.3.3-cv.1. Prefer a deterministic runtime bundle containing tk, curated plugins/aliases, LICENSE, and README plus SHA256SUMS; publish as a draft and make the release immutable before publication. Do not configure external publishing secrets.
-
-Use GitHub Releases as the likely canonical long-term channel. Add a manually maintained chrisvaillancourt/homebrew-tap with one distinctly named formula only after one-command-install demand exists. Point it at the immutable fork release asset and checksum. Defer install scripts because of PATH/rollback and remote-code-execution concerns; never promote curl-pipe-shell. Defer AUR because upstream already maintains ticket 0.3.2-1 and a fork requires a distinct package identity, conflicts/provides semantics, an SSH key, and ongoing demand. Do not wrap the Bash CLI in npm, PyPI, Cargo, Deb/RPM, or Nix without an ecosystem maintainer or demonstrated user need.
+2026-07-23 decision: optimize for the maintainer and trusted development machines. Use local checkout installation now and remove the inherited release/publisher system. Hosted releases and package managers are demand-triggered future work, not dormant automation retained in this fork.
 
 Additional resources:
 - https://docs.github.com/en/code-security/concepts/supply-chain-security/immutable-releases
@@ -56,3 +56,7 @@ Additional resources:
 - https://docs.brew.sh/How-to-Create-and-Maintain-a-Tap
 - https://docs.brew.sh/Acceptable-Formulae#forks
 - https://wiki.archlinux.org/title/PKGBUILD#Package_relations
+
+**2026-07-23T23:40:11Z**
+
+2026-07-23: Decision completed. Target Chris/trusted development machines; use commit-identified local checkout installation now; remove inherited publishing; reconsider a fork-owned manual GitHub Release only on documented distribution demand.

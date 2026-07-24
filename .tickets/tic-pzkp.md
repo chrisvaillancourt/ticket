@@ -10,11 +10,11 @@ assignee: Chris Vaillancourt
 parent: tic-jppr
 tags: [actions, security, release]
 ---
-# Contain the upstream Release workflow in the fork
+# Remove the inherited release and publishing automation
 
-The inherited .github/workflows/release.yml is designed for wedow/ticket, not this fork. It triggers on any v* tag, grants contents: write, creates a release, then runs scripts that target wedow/homebrew-tools and upstream AUR package names using TAP_GITHUB_TOKEN and AUR_SSH_KEY. The fork currently has no secrets, so upstream publishing cannot succeed today, but an accidental tag can still create a fork release and future credentials could make the workflow dangerous. Existing copied tags do not retro-trigger workflows.
+The inherited release system is designed for wedow/ticket and is not part of this fork's selected distribution strategy. It triggers on any v* tag, grants contents: write, creates a release, and invokes Homebrew/AUR publishing code aimed at upstream-owned targets. Missing secrets prevent the external publishing steps today, but an accidental tag can still create a fork release.
 
-Relevant files: .github/workflows/release.yml, scripts/publish-homebrew.sh, scripts/publish-aur.sh.
+This fork is free to diverge structurally. Do not preserve dormant upstream publishing machinery merely for compatibility.
 
 Resources:
 - https://docs.github.com/en/actions/how-tos/manage-workflow-runs/disable-and-enable-workflows
@@ -22,16 +22,16 @@ Resources:
 
 ## Design
 
-Short-term containment should be simple and reversible: disable Release in the fork and add a durable repository guard that prevents the upstream publishing job from running outside wedow/ticket. Do not add publisher credentials and do not create a v* tag for testing.
+Delete `.github/workflows/release.yml` and the Homebrew/AUR publisher scripts and templates that exist only to support it. Disable the currently registered Release workflow in GitHub before or as part of the removal. Do not replace it in this ticket, add publisher credentials, or create a tag for testing.
 
-The long-term fork-native release workflow should replace this workflow only after the release strategy ticket is decided. Keep upstream exportability in mind: a fork-only guard or separate workflow should be easy to exclude from an upstream contribution branch.
+If hosted distribution is justified later, build a new manual fork-native workflow from first principles under a new ticket. Generally useful product commits can still be exported upstream without retaining upstream-specific release infrastructure in this branch.
 
 ## Acceptance Criteria
 
-Release is disabled in the fork or provably guarded so a fork tag cannot run upstream publishing logic. No upstream publishing secret exists in the fork. A dry inspection documents what a v* tag would do. The containment is verified without creating a release tag, GitHub release, Homebrew update, or AUR update. The decision is recorded in public repository documentation or ticket notes.
+The inherited Release workflow is disabled in GitHub and removed from the repository. Upstream-targeted Homebrew/AUR publishing scripts and package templates are removed, with remaining references cleaned up. No tag trigger or workflow can create a release or publish a package. No publishing secret is added. Verification uses repository inspection and live workflow/settings queries without creating a tag, release, Homebrew update, or AUR update. README release/installation claims are left accurate or coordinated with `tic-pont`.
 
 ## Notes
 
 **2026-07-22T18:40:37Z**
 
-2026-07-22 re-audit: the inherited packaging is also internally inconsistent after plugin extraction. Plugin metadata reports versions 1.0.0/1.0.1, while repository tags stop at v0.3.2. The scripts generate plugin source URLs for those plugin versions but reuse the repository release tarball SHA for every package, so generated formulas/PKGBUILDs can reference missing tags or mismatched hashes. All source URLs, maintainer metadata, tap targets, and AUR package names remain hardcoded to wedow. Do not adapt or invoke this combined flow as the short-term fork release path.
+2026-07-22 re-audit: the inherited packaging is internally inconsistent after plugin extraction. Plugin metadata reports versions 1.0.0/1.0.1, while repository tags stop at v0.3.2. Generated plugin packages can reference missing tags or mismatched hashes, and all targets remain hardcoded to wedow. The selected resolution is removal, not adaptation.
