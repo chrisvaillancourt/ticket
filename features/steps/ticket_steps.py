@@ -3,6 +3,8 @@
 import json
 import os
 import re
+import shlex
+import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -786,3 +788,228 @@ exec "$TK_SCRIPT" super create "$@"
 def step_run_with_plugins(context, command):
     """Run a command with plugins in PATH."""
     run_with_plugin_path(context, command)
+
+
+# ============================================================================
+# Local Installer Steps
+# ============================================================================
+
+INSTALL_LINKS = {
+    'tk': 'ticket',
+    'ticket-edit': 'plugins/ticket-edit',
+    'ticket-ls': 'plugins/ticket-ls',
+    'ticket-list': 'plugins/ticket-list',
+    'ticket-query': 'plugins/ticket-query',
+    'ticket-migrate-beads': 'plugins/ticket-migrate-beads',
+}
+
+
+def run_local_installer(context, action):
+    """Run the checkout-local installer against the scenario prefix."""
+    installer = context.local_checkout / 'scripts' / 'install-local.sh'
+    env = os.environ.copy()
+    env['PREFIX'] = str(context.local_prefix)
+    result = subprocess.run(
+        [str(installer), action],
+        cwd=context.local_checkout,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=env,
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+    return result
+
+
+def installed_entry_snapshot(entry):
+    """Describe a prefix entry without following symlinks."""
+    if entry.is_symlink():
+        return ('link', os.readlink(entry))
+    if entry.is_dir():
+        return ('directory',)
+    if entry.is_file():
+        return ('file', entry.read_bytes())
+    return ('missing',)
+
+
+@given(r'a temporary local checkout and user prefix')
+def step_temporary_local_checkout(context):
+    """Copy only local-install runtime files into a writable checkout fixture."""
+    source = Path(context.project_dir)
+    test_root = Path(context.test_dir).resolve()
+    checkout = test_root / 'checkout'
+    checkout.mkdir()
+    shutil.copy2(source / 'ticket', checkout / 'ticket')
+    shutil.copytree(source / 'plugins', checkout / 'plugins', symlinks=True)
+    (checkout / 'pkg').mkdir()
+    shutil.copy2(source / 'pkg' / 'extras.txt', checkout / 'pkg' / 'extras.txt')
+    (checkout / 'scripts').mkdir()
+    shutil.copy2(
+        source / 'scripts' / 'install-local.sh',
+        checkout / 'scripts' / 'install-local.sh',
+    )
+
+    context.local_checkout = checkout
+    context.local_prefix = test_root / 'prefix'
+
+
+@given(r'a stub editor for installed commands')
+def step_stub_editor(context):
+    """Configure an editor that records any unexpected invocation."""
+    marker = Path(context.test_dir) / 'editor-invoked'
+    editor = Path(context.test_dir) / 'stub-editor'
+    editor.write_text(
+        '#!/usr/bin/env bash\n'
+        'printf invoked > "$STUB_EDITOR_MARKER"\n'
+    )
+    editor.chmod(0o755)
+    context.stub_editor = editor
+    context.stub_editor_marker = marker
+
+
+@when(r'I install the local checkout')
+def step_install_local_checkout(context):
+    run_local_installer(context, 'install')
+
+
+@when(r'I uninstall the local checkout')
+def step_uninstall_local_checkout(context):
+    run_local_installer(context, 'uninstall')
+
+
+@given(r'the local checkout is installed')
+def step_local_checkout_installed(context):
+    result = run_local_installer(context, 'install')
+    assert result.returncode == 0, \
+        f"Install failed\nstdout: {result.stdout}\nstderr: {result.stderr}"
+
+
+@when(r'I run installed "(?P<command>[^"]+)"')
+def step_run_installed(context, command):
+    """Run only the explicitly installed temporary-prefix tk link."""
+    env = os.environ.copy()
+    env['PATH'] = str(context.local_prefix / 'bin') + ':' + env.get('PATH', '')
+    if hasattr(context, 'stub_editor'):
+        env['EDITOR'] = str(context.stub_editor)
+        env['STUB_EDITOR_MARKER'] = str(context.stub_editor_marker)
+
+    result = subprocess.run(
+        [str(context.local_prefix / 'bin' / 'tk'), *shlex.split(command)],
+        cwd=context.test_dir,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=env,
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+
+
+@then(r'the local prefix should contain checkout links:')
+def step_prefix_contains_checkout_links(context):
+    expected_names = context.text.splitlines()
+    assert expected_names == list(INSTALL_LINKS), \
+        f"Scenario link list does not match installer contract: {expected_names}"
+    for name, relative_target in INSTALL_LINKS.items():
+        entry = context.local_prefix / 'bin' / name
+        expected = context.local_checkout / relative_target
+        assert entry.is_symlink(), f"Expected symlink: {entry}"
+        assert os.readlink(entry) == str(expected), \
+            f"Expected {entry} -> {expected}, got {os.readlink(entry)}"
+
+
+@then(r'the stub editor should not have been invoked')
+def step_stub_editor_not_invoked(context):
+    assert not context.stub_editor_marker.exists(), \
+        f"Noninteractive edit invoked editor: {context.stub_editor_marker}"
+
+
+@given(r'prefix entry "(?P<name>[^"]+)" is a (?P<kind>regular file|directory|broken link|foreign link)')
+def step_conflicting_prefix_entry(context, name, kind):
+    bin_dir = context.local_prefix / 'bin'
+    bin_dir.mkdir(parents=True)
+    entry = bin_dir / name
+
+    if kind == 'regular file':
+        entry.write_text('unrelated command\n')
+    elif kind == 'directory':
+        entry.mkdir()
+    elif kind == 'broken link':
+        entry.symlink_to(Path(context.test_dir) / 'missing-command')
+    else:
+        foreign = Path(context.test_dir) / 'foreign-command'
+        foreign.write_text('foreign command\n')
+        entry.symlink_to(foreign)
+
+    context.conflicting_entry = entry
+    context.conflicting_entry_snapshot = installed_entry_snapshot(entry)
+
+
+@then(r'prefix entry "(?P<name>[^"]+)" should be unchanged')
+def step_prefix_entry_unchanged(context, name):
+    entry = context.local_prefix / 'bin' / name
+    assert entry == context.conflicting_entry
+    assert installed_entry_snapshot(entry) == context.conflicting_entry_snapshot
+
+
+@then(r'no checkout links should have been installed')
+def step_no_checkout_links_installed(context):
+    for name in INSTALL_LINKS:
+        entry = context.local_prefix / 'bin' / name
+        if entry == context.conflicting_entry:
+            continue
+        assert not entry.exists() and not entry.is_symlink(), \
+            f"Unexpected partial installation: {entry}"
+
+
+@when(r'the checkout core is changed to output "(?P<output>[^"]+)"')
+def step_change_checkout_core(context, output):
+    core = context.local_checkout / 'ticket'
+    core.write_text(f'#!/usr/bin/env bash\nprintf "%s\\n" "{output}"\n')
+    core.chmod(0o755)
+
+
+@given(r'unrelated prefix entry "(?P<name>[^"]+)" contains "(?P<content>[^"]+)"')
+def step_unrelated_prefix_entry(context, name, content):
+    entry = context.local_prefix / 'bin' / name
+    entry.write_text(content)
+    context.unrelated_entry = entry
+
+
+@given(r'installed entry "(?P<name>[^"]+)" is retargeted outside the checkout')
+def step_retarget_installed_entry(context, name):
+    foreign = Path(context.test_dir) / f'foreign-{name}'
+    foreign.write_text('foreign target\n')
+    entry = context.local_prefix / 'bin' / name
+    entry.unlink()
+    entry.symlink_to(foreign)
+    context.retargeted_entry = entry
+    context.retargeted_entry_snapshot = installed_entry_snapshot(entry)
+
+
+@then(r'owned checkout links should be absent')
+def step_owned_checkout_links_absent(context):
+    for name in INSTALL_LINKS:
+        entry = context.local_prefix / 'bin' / name
+        if hasattr(context, 'retargeted_entry') and entry == context.retargeted_entry:
+            continue
+        assert not entry.exists() and not entry.is_symlink(), \
+            f"Checkout-owned link remains: {entry}"
+
+
+@then(r'unrelated prefix entry "(?P<name>[^"]+)" should contain "(?P<content>[^"]+)"')
+def step_unrelated_prefix_entry_preserved(context, name, content):
+    entry = context.local_prefix / 'bin' / name
+    assert entry.read_text() == content
+
+
+@then(r'retargeted installed entry "(?P<name>[^"]+)" should be unchanged')
+def step_retargeted_entry_unchanged(context, name):
+    entry = context.local_prefix / 'bin' / name
+    assert entry == context.retargeted_entry
+    assert installed_entry_snapshot(entry) == context.retargeted_entry_snapshot

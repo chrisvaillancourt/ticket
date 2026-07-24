@@ -13,11 +13,13 @@
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 
 ### Added
+- Reversible checkout-local installer for core, curated plugins, and aliases
 - Plugin system: executables named `tk-<cmd>` or `ticket-<cmd>` in PATH are invoked automatically
 - `super` command to bypass plugins and run built-in commands directly
 - `TICKETS_DIR` and `TK_SCRIPT` environment variables exported for plugins
 - `help` command lists installed plugins with descriptions
 - Plugin metadata: `# tk-plugin:` comment for scripts, `--tk-describe` flag for binaries
+
 ### Plugins
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias

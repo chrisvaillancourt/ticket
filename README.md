@@ -14,22 +14,114 @@ nw-5c46: add SSE connection management
 
 VS Code allows you to Ctrl+Click or Cmd+Click the ID and jump directly to the file to read the details.
 
-## Development checkout
+## Local checkout
 
-Clone this repository and run the checkout directly:
+Clone this repository and record the exact commit you are installing:
 
 ```bash
 git clone https://github.com/chrisvaillancourt/ticket.git
 cd ticket
+git rev-parse HEAD
+```
+
+You can run the checkout without installing it:
+
+```bash
 env PATH="$PWD/plugins:$PATH" ./ticket help
 ```
 
 Adding the checkout's `plugins/` directory to `PATH` makes the bundled plugins
 available to that invocation without installing them.
 
+For regular use, install checkout-owned symlinks into a user prefix:
+
+```bash
+./scripts/install-local.sh install
+```
+
+The default prefix is `$HOME/.local`, so this creates `$HOME/.local/bin/tk`
+plus `ticket-edit`, `ticket-ls`, `ticket-list`, `ticket-query`, and
+`ticket-migrate-beads`. The curated plugin list comes from `pkg/extras.txt`.
+To use another user-owned prefix:
+
+```bash
+PREFIX="$HOME/tools/ticket" ./scripts/install-local.sh install
+```
+
+The installer never uses `sudo`, edits shell profiles, or replaces an existing
+entry in the selected prefix. It preflights every destination and aborts
+without creating any command links if a regular file, directory, broken link,
+or link to another checkout would be replaced. Repeating installation for
+exact links to this checkout is safe.
+
+### PATH and existing installations
+
+Add the selected bin directory before other command directories. For the
+default prefix, add this to `~/.zshrc` on macOS or `~/.bashrc` on Linux:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+Open a new shell or run `hash -r`. Putting the local prefix first switches
+command precedence without uninstalling an existing Homebrew, AUR, or other
+`tk`; removing or reordering that PATH entry switches back.
+
+Inspect every core/plugin name that can affect the installed commands:
+
+```bash
+for command_name in \
+  tk \
+  tk-edit ticket-edit \
+  tk-ls ticket-ls \
+  tk-list ticket-list \
+  tk-query ticket-query \
+  tk-migrate-beads ticket-migrate-beads
+do
+  command_path=$(command -v "$command_name" 2>/dev/null) || continue
+  printf '%s: %s\n' "$command_name" "$command_path"
+  if [ -L "$command_path" ]; then
+    printf '  -> %s\n' "$(readlink "$command_path")"
+  fi
+done
+type -a tk
+```
+
+The core checks `tk-<command>` before `ticket-<command>`. Consequently, an
+active `tk-query`, for example, overrides the installed `ticket-query`; inspect
+both names before relying on PATH order alone.
+
+### Update and rollback
+
+The commands are symlinks into the checkout, so a normal fast-forward update
+is immediately active without reinstalling:
+
+```bash
+git status --short
+git pull --ff-only
+git rev-parse HEAD
+./scripts/install-local.sh install  # optional idempotence check
+```
+
+Rollback the local installation from the same checkout:
+
+```bash
+./scripts/install-local.sh uninstall
+hash -r
+command -v tk
+```
+
+With a custom prefix, pass the same `PREFIX` to uninstall. Uninstall removes
+only exact links owned by this checkout; it preserves unrelated or retargeted
+entries. It does not remove the checkout or change PATH, so remove/reorder the
+PATH line separately if desired.
+
 ## Requirements
 
-`tk` is a portable bash script requiring only coreutils, so it works out of the box on any POSIX system with bash installed. The `query` command requires `jq`. Uses `rg` (ripgrep) if available, falls back to `grep`.
+The core and local installer require Bash and standard command-line utilities
+available on macOS and Linux. The `query` and `migrate-beads` plugins require
+`jq`. `tk` uses `rg` (ripgrep) when available and otherwise falls back to
+`grep`.
 
 ## Agent Setup
 
