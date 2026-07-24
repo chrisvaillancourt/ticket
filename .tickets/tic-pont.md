@@ -18,10 +18,10 @@ The local path must install or link both the core tk executable and the desired 
 
 ## Design
 
-Evaluate the smallest reversible developer installation for macOS/Linux. Likely options are symlinks from a user-owned bin directory, a tiny install/uninstall script, or documented PATH entries for the core and plugin directories. Prefer a user-scoped destination such as ~/.local/bin when it is already on PATH.
+Provide a small checkout-local installer that creates user-scoped symlinks in `${PREFIX:-$HOME/.local}/bin` for `tk`, every curated plugin in `pkg/extras.txt`, and maintained aliases such as `list`. Symlinks keep the installation current after `git pull`. The installer must fail safely on any existing non-matching command; it may treat an existing link to the same checkout as an idempotent success. Do not offer a remote curl-pipe-shell path.
 
-Document how to confirm which executable is active, how plugins are discovered, how to switch between upstream and fork installations, how to update after git pull, and how to uninstall cleanly. Do not require sudo or overwrite an existing tk without an explicit backup/confirmation step.
+Provide a matching uninstall operation that removes only links it can prove belong to this checkout. Document PATH setup, prerequisites, active-command inspection, plugin precedence (`tk-<cmd>` is checked before `ticket-<cmd>`), switching from an upstream installation, update after `git pull`, and rollback. Never require sudo, overwrite or rename an existing command, or change Git/auth/signing configuration.
 
 ## Acceptance Criteria
 
-A clean test environment can invoke tk help and all curated plugin commands from the fork. The instructions identify the active executable with command -v/readlink or equivalent, handle an existing upstream installation safely, include uninstall/rollback steps, and do not depend on Release workflow credentials. Automated smoke coverage is added where practical.
+Automated smoke coverage on a temporary user prefix verifies install, idempotent reinstall, collision refusal, `tk help`, `ls` and `list`, `query`, a noninteractive `edit` invocation with a stub editor, safe `migrate-beads` failure/smoke behavior, update-through-symlink behavior, and uninstall without touching unrelated files. Documentation covers macOS and Linux, identifies every active executable with `command -v`/`readlink` or equivalents, states Bash and jq requirements, handles existing upstream core and plugin commands safely, and includes update and rollback steps. No Release workflow or credentials are required.
