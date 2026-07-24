@@ -1,6 +1,6 @@
 ---
 id: tic-1b09
-status: open
+status: in_progress
 deps: [tic-mgwu]
 links: []
 created: 2026-07-22T18:37:59Z

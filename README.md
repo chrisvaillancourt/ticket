@@ -123,6 +123,9 @@ available on macOS and Linux. The `query` and `migrate-beads` plugins require
 `jq`. `tk` uses `rg` (ripgrep) when available and otherwise falls back to
 `grep`.
 
+Repository maintenance follows the documented
+[GitHub Actions and branch policy](docs/github-actions-policy.md).
+
 ## Agent Setup
 
 Add this line to your `CLAUDE.md` or `AGENTS.md`:
