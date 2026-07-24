@@ -14,26 +14,18 @@ nw-5c46: add SSE connection management
 
 VS Code allows you to Ctrl+Click or Cmd+Click the ID and jump directly to the file to read the details.
 
-## Install
+## Development checkout
 
-**Homebrew (macOS/Linux):**
+Clone this repository and run the checkout directly:
+
 ```bash
-brew tap wedow/tools
-brew install ticket
+git clone https://github.com/chrisvaillancourt/ticket.git
+cd ticket
+env PATH="$PWD/plugins:$PATH" ./ticket help
 ```
 
-**Arch Linux (AUR):**
-```bash
-yay -S ticket  # or paru, etc.
-```
-
-**From source (auto-updates on git pull):**
-```bash
-git clone https://github.com/wedow/ticket.git
-cd ticket && ln -s "$PWD/ticket" ~/.local/bin/tk
-```
-
-**Or** just copy `ticket` to somewhere in your PATH.
+Adding the checkout's `plugins/` directory to `PATH` makes the bundled plugins
+available to that invocation without installing them.
 
 ## Requirements
 
@@ -85,7 +77,7 @@ Commands:
   add-note <id> [text]     Append timestamped note (or pipe via stdin)
   super <cmd> [args]       Bypass plugins, run built-in command directly
 
-Bundled plugins (ticket-extras):
+Checkout plugins:
   edit <id>                Open ticket in $EDITOR
   ls|list [--status=X] [-a X] [-T X]   List tickets
   query [jq-filter]        Output tickets as JSON, optionally filtered (requires jq)

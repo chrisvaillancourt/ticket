@@ -33,25 +33,9 @@ Use `$TK_SCRIPT super <cmd>` to call built-ins without recursing into plugins:
 "$TK_SCRIPT" super create "$@" --type task --priority 1
 ```
 
-## Packaging
-
-Plugins here are automatically packaged on release for Homebrew and AUR.
-
-**Meta-packages:**
-- `ticket-core` — core script only
-- `ticket-extras` — curated plugins (listed in `pkg/extras.txt`)
-- `ticket` — depends on core + extras
-
-**Install options:**
-```bash
-brew install ticket                      # Full: core + curated plugins
-brew install ticket-core                 # Minimal: core only
-brew install ticket-core ticket-query    # Core + specific plugin
-```
-
 ## Adding a Plugin
 
 1. Create `plugins/ticket-<name>` with metadata comments
 2. `chmod +x plugins/ticket-<name>`
-3. Add to `pkg/extras.txt` if it should be in the extras bundle
-4. Commit and tag a release
+3. Add to `pkg/extras.txt` if it belongs in the curated checkout plugin list
+4. Update the plugin documentation and changelog

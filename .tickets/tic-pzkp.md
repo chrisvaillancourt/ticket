@@ -1,6 +1,6 @@
 ---
 id: tic-pzkp
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-07-22T18:37:59Z

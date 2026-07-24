@@ -3,7 +3,10 @@
 ## [Unreleased]
 
 ### Changed
-- Extracted `edit`, `ls`, `query`, and `migrate-beads` commands to plugins (ticket-extras)
+- Extracted `edit`, `ls`, `query`, and `migrate-beads` commands to checkout plugins
+
+### Removed
+- Inherited GitHub Release workflow and upstream-specific Homebrew/AUR publishing assets
 
 ### Fixed
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
@@ -15,9 +18,6 @@
 - `TICKETS_DIR` and `TK_SCRIPT` environment variables exported for plugins
 - `help` command lists installed plugins with descriptions
 - Plugin metadata: `# tk-plugin:` comment for scripts, `--tk-describe` flag for binaries
-- Multi-package distribution: `ticket-core`, `ticket-extras`, and individual plugin packages
-- CI scripts for publishing to Homebrew tap and AUR
-
 ### Plugins
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias

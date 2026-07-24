@@ -35,8 +35,7 @@ plugins/
 └── ...
 
 pkg/
-├── extras.txt             # Curated list for ticket-extras meta-package
-└── aur/                   # PKGBUILD templates
+└── extras.txt             # Curated plugins extracted from core
 ```
 
 ### Plugin File Conventions
@@ -106,46 +105,3 @@ Example:
 ### What Doesn't Need Logging
 - Documentation-only changes
 - CI/workflow changes (unless they affect user-facing behavior)
-
-## Releases & Packaging
-
-### Package Structure
-
-Three meta-packages plus individual plugin packages:
-- `ticket` - Full installation (depends on ticket-core + ticket-extras)
-- `ticket-core` - Core script only, no plugins
-- `ticket-extras` - Curated plugins extracted from core (listed in `pkg/extras.txt`)
-- `ticket-<name>` - Individual plugin packages
-
-Users can mix and match:
-```bash
-brew install ticket           # Everything
-brew install ticket-core      # Minimal
-brew install ticket-core ticket-query  # Core + specific plugin
-```
-
-### Release Flow
-
-1. Update CHANGELOG.md: change `## [Unreleased]` to version + date
-2. Commit and tag:
-   ```bash
-   git commit -am "release: v0.4.0"
-   git tag v0.4.0
-   git push && git push origin v0.4.0
-   ```
-
-### CI Publishing
-
-The release workflow (`.github/workflows/release.yml`) automatically:
-1. Creates GitHub release with changelog body
-2. Runs `scripts/publish-homebrew.sh` - updates all formulas in tap
-3. Runs `scripts/publish-aur.sh` - updates all AUR packages
-
-Plugins are only published if their `tk-plugin-version` changed (identical PKGBUILDs result in no-op pushes).
-
-### Package Managers
-
-- **Homebrew:** `wedow/homebrew-tools` tap
-- **AUR:** Individual repos at `aur.archlinux.org/<pkgname>.git`
-
-Both are updated automatically by CI. AUR repos are created on first push if they don't exist.
