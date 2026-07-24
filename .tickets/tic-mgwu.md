@@ -1,7 +1,7 @@
 ---
 id: tic-mgwu
 status: open
-deps: [tic-pzkp]
+deps: [tic-pzkp, tic-xp3y]
 links: []
 created: 2026-07-22T18:37:59Z
 type: chore
@@ -24,10 +24,10 @@ Resources:
 
 ## Design
 
-Make security intent explicit before clearing the fork gate. Add permissions: contents: read, add workflow_dispatch for deliberate validation, pin actions/checkout and astral-sh/setup-uv to verified full commit SHAs, pin the uv version, and make Behave/transitive resolution reproducible through an appropriate lock or exact dependency set. Continue using an ephemeral GitHub-hosted runner. Do not add secrets and do not use pull_request_target. Set external-contributor approval to the agreed safe policy before allowing PR-triggered runs; broader allowed-action and SHA-enforcement settings can follow after the workflow references are pinned and therefore do not hard-block this ticket.
+Make security intent explicit before clearing the fork gate. Add `permissions: contents: read` and `workflow_dispatch`. Pin actions/checkout and astral-sh/setup-uv to reviewed full commit SHAs with version comments. Pin the uv version in setup-uv. Add a minimal `pyproject.toml` development dependency and committed `uv.lock`, then make `make test` use the locked environment rather than resolving Behave dynamically. Continue using an ephemeral GitHub-hosted runner. Do not add secrets or use `pull_request_target`.
 
 After code hardening and release containment are in place, enable fork workflows from the signed-in Actions page, manually trigger or push a harmless reviewed commit, and record the successful run URL and commit SHA.
 
 ## Acceptance Criteria
 
-Test declares read-only permissions, uses verified immutable action SHAs, uses reproducible uv/test dependencies, supports workflow_dispatch, and still runs on intended master/PR events. Release containment is complete first. The fork-specific Actions gate is cleared, a hosted Test run passes for fork master, and its URL/SHA are recorded. No repository secret is added and no self-hosted runner or pull_request_target trigger is used.
+Test declares read-only permissions, uses reviewed immutable action SHAs with human-readable version comments, pins uv, uses a committed lock for Behave and transitive dependencies, supports workflow_dispatch, and still runs on intended master/PR events. Release removal and all-external-contributor approval are complete first. The fork-specific Actions gate is cleared, a hosted Test run passes for fork master, and its URL/SHA are recorded. No repository secret, self-hosted runner, or pull_request_target trigger is introduced.

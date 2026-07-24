@@ -1,7 +1,7 @@
 ---
 id: tic-1b09
 status: open
-deps: []
+deps: [tic-mgwu]
 links: []
 created: 2026-07-22T18:37:59Z
 type: chore
@@ -10,9 +10,9 @@ assignee: Chris Vaillancourt
 parent: tic-jppr
 tags: [actions, security, settings]
 ---
-# Strengthen public-fork Actions and branch controls
+# Enforce pinned Actions and document the solo-maintainer branch policy
 
-Repository settings are part of the security boundary even when workflow YAML is safe. On 2026-07-22 the fork defaults GITHUB_TOKEN to read, cannot approve pull requests, allows all actions, does not require full-SHA pinning, requires workflow approval only for first-time contributors, and has no master branch protection. Public pull-request workflows can execute repository-controlled Behave steps and shell code on GitHub-hosted runners. They cannot reach local machines, and fork PRs receive no repository secrets and a read-only token, but malicious code can use outbound network access and consume runner resources.
+Repository settings are part of the security boundary even when workflow YAML is safe. The immediate external-contributor approval prerequisite is tracked separately so this ticket can follow Test workflow pinning without creating a circular dependency.
 
 Resources:
 - https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/enabling-features-for-your-repository/managing-github-actions-settings-for-a-repository#controlling-changes-from-forks-to-workflows-in-public-repositories
@@ -21,10 +21,10 @@ Resources:
 
 ## Design
 
-Set approval to all external contributors before allowing public PR workflows. After workflow action references are pinned, consider enforcing full-SHA pinning and restricting allowed actions to the exact reviewed set. Keep default GITHUB_TOKEN read-only and prevent Actions from creating or approving pull requests. Evaluate a minimal master ruleset or branch protection that requires the Test check without making solo maintenance impractical.
+After Test references are pinned, require full-SHA action references and restrict allowed actions to the reviewed repositories currently needed by the workflow (`actions/checkout` and `astral-sh/setup-uv`). Keep default GITHUB_TOKEN read-only and unable to create or approve pull requests. Record exact API settings and the procedure for adding another action deliberately.
 
-Document settings that cannot be represented in git so a future owner can reproduce or audit them.
+Do not add master branch protection yet. This is a solo-maintained fork with direct local ownership, no production deployment, and no hosted release path; mandatory PR-only changes would add recovery and maintenance friction without protecting a shared deployment boundary. Reconsider a ruleset when another maintainer receives write access, hosted releases are introduced, or master becomes a deployment source. Document settings that cannot be represented in git.
 
 ## Acceptance Criteria
 
-All external contributors require approval before workflows run, read-only default token permissions remain in force, and the allowed-action/SHA policy is explicitly decided. Any branch protection or ruleset choice is documented with its solo-maintainer tradeoff. Current settings are captured in reproducible commands or public documentation without exposing credentials. A malicious external PR cannot receive fork secrets or bypass the chosen approval policy through pull_request_target.
+Full-SHA pinning is required and allowed actions are restricted to the reviewed repositories used by Test. Read-only default token permissions remain in force and Actions cannot approve pull requests. The deliberate no-branch-protection decision and its reconsideration triggers are documented. Current settings and reproducible audit commands are recorded without credentials. No workflow uses pull_request_target or exposes secrets to external pull requests.
