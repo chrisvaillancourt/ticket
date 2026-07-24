@@ -1,6 +1,6 @@
 ---
 id: tic-pont
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-07-22T18:37:59Z
@@ -25,3 +25,19 @@ Provide a matching uninstall operation that removes only links it can prove belo
 ## Acceptance Criteria
 
 Automated smoke coverage on a temporary user prefix verifies install, idempotent reinstall, collision refusal, `tk help`, `ls` and `list`, `query`, a noninteractive `edit` invocation with a stub editor, safe `migrate-beads` failure/smoke behavior, update-through-symlink behavior, and uninstall without touching unrelated files. Documentation covers macOS and Linux, identifies every active executable with `command -v`/`readlink` or equivalents, states Bash and jq requirements, handles existing upstream core and plugin commands safely, and includes update and rollback steps. No Release workflow or credentials are required.
+
+## Notes
+
+**2026-07-24T17:46:46Z**
+
+Completed and independently reviewed the local fork installation path.
+
+Implementation: ea39631 added the reversible checkout-local installer, documentation, and Behave coverage. The initial TDD red run had 8 scenarios errored with 48 undefined steps. Review finding F-01 identified CDPATH output contaminating checkout root discovery; 14b4337 added the focused duplicate-path regression and made discovery independent of CDPATH. The regression first failed with the duplicated checkout/scripts newline path, then passed after remediation.
+
+Deferred hardening: 397537c added P3 deferred child chores tic-08b3 for ownership across manifest and alias evolution and tic-gji1 for transactional rollback-safe link creation.
+
+Final validation: installer feature 9 scenarios and 80 steps passed; related plugin/edit/query coverage 3 features, 23 scenarios, and 132 steps passed; full suite 14 features, 166 scenarios, and 1173 steps passed. bash -n, Bash 3.2 compatibility, ShellCheck, and git diff --check passed.
+
+Temporary-prefix smoke covered install, idempotence, explicit temporary command execution, expected safe migrate-beads failure, and ownership-safe uninstall. The parent PATH was unchanged; command -v tk remained /opt/homebrew/bin/tk, its link target remained ../Cellar/ticket/0.3.2/bin/tk, SHA-256 remained 408f2c113ecc3bc071507593a78386f1b4cc743be6491c9e9f2627efd4d9902b, and inode remained 16777233:24791280. The real Homebrew installation was not modified.
+
+Independent review status: initial F-01 was remediated; final re-review reported no meaningful issues.
