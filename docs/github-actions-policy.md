@@ -24,10 +24,16 @@ The selected-action policy is:
 }
 ```
 
-The wildcard patterns identify only the two reviewed action repositories; they
-do not allow all GitHub-owned or verified Marketplace actions. The separate
-`sha_pinning_required` setting rejects mutable tags and branches, so an allowed
-repository can be used only with a full commit SHA.
+The wildcard patterns identify only the two reviewed repositories; they do not
+allow all GitHub-owned or verified Marketplace actions. For action references,
+the separate `sha_pinning_required` setting rejects mutable tags and branches,
+so these actions can be used only with a full commit SHA.
+
+The selected-actions policy also governs reusable workflows, but GitHub permits
+a reusable workflow to be referenced by a tag even when required SHA pinning is
+enabled. This repository therefore prohibits job-level reusable-workflow
+`uses:` entries in the static audit rather than treating the setting as a
+complete enforcement boundary for them.
 
 ### Applying the policy
 
@@ -101,6 +107,13 @@ or environments. The workflow uses `pull_request`, not
 4. Re-run the audit below, compare the workflow on `master` with the local
    file, dispatch `Test`, and require a successful GitHub-hosted run.
 
+To deliberately add a reusable workflow, review its repository and ownership,
+pin the job-level `uses:` reference to a verified full 40-character commit SHA,
+and add only its exact repository pattern to the complete selected-actions
+body. Then intentionally replace the prohibition assertion below with a check
+that recognizes only the reviewed reusable-workflow repository and full SHA.
+Do not rely on `sha_pinning_required` to reject a reusable-workflow tag.
+
 ## Reproducible audit
 
 These read-only commands rely on the caller's existing `gh` authentication;
@@ -164,15 +177,27 @@ gh api -H "$api_version" "$repo_api/rulesets" |
 Audit the workflow files themselves:
 
 ```bash
-uses_lines=$(rg -n '^[[:space:]]*-[[:space:]]+uses:' .github/workflows)
-printf '%s\n' "$uses_lines"
-printf '%s\n' "$uses_lines" |
-  awk '
-    !/uses: (actions\/checkout|astral-sh\/setup-uv)@[0-9a-f]{40}([[:space:]]|$)/ {
-      bad = 1
-    }
-    END { exit bad }
-  '
+step_uses=$(rg -n '^[[:space:]]*-[[:space:]]+uses:' \
+  .github/workflows || true)
+printf '%s\n' "$step_uses"
+printf '%s\n' "$step_uses" |
+  awk 'NF { count++ } END { exit count != 2 }'
+
+actual_step_refs=$(
+  printf '%s\n' "$step_uses" |
+    sed -E 's/^.*uses:[[:space:]]+([^[:space:]#]+).*$/\1/' |
+    sort
+)
+expected_step_refs=$(
+  printf '%s\n' \
+    'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' \
+    'astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9' |
+    sort
+)
+test "$actual_step_refs" = "$expected_step_refs"
+
+# A non-list `uses:` key can be a job-level reusable workflow. It is prohibited.
+! rg -n '^[[:space:]]+uses:[[:space:]]+' .github/workflows
 
 ! rg -n 'pull_request_target|self-hosted|secrets[.]' .github/workflows
 
