@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tk-plugin: List tickets with optional filters
-# tk-plugin-version: 1.1.0
+# tk-plugin-version: 1.1.1
 set -euo pipefail
 
 status_filter="" assignee_filter="" tag_filter=""
@@ -16,7 +16,12 @@ while [[ $# -gt 0 ]]; do
 done
 
 awk -v status_filter="$status_filter" -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
-BEGIN { FS=": "; in_front=0 }
+BEGIN {
+    FS=": "
+    in_front=0
+    squote = sprintf("%c", 39)
+    double_squote = squote squote
+}
 FNR==1 {
     if (prev_file) emit()
     id=""; status=""; title=""; deps=""; assignee=""; tags=""
@@ -34,6 +39,7 @@ in_front && /^defer_until:/ { defer_until = $2; defer_until_seen=1 }
 in_front && /^defer_reason:/ {
     defer_reason = $0
     sub(/^defer_reason:[[:space:]]*/, "", defer_reason)
+    defer_reason = yaml_single_quote_decode(defer_reason)
     defer_reason_seen=1
 }
 in_front && /^deps:/ {
@@ -46,6 +52,13 @@ function has_tag(tags_str, tag,    i, n, arr) {
     n = split(tags_str, arr, ",")
     for (i = 1; i <= n; i++) if (arr[i] == tag) return 1
     return 0
+}
+function yaml_single_quote_decode(value) {
+    if (length(value) >= 2 && substr(value, 1, 1) == squote && substr(value, length(value), 1) == squote) {
+        value = substr(value, 2, length(value) - 2)
+        gsub(double_squote, squote, value)
+    }
+    return value
 }
 function emit() {
     if (id != "" && (status_filter == "" || status == status_filter) && (assignee_filter == "" || assignee == assignee_filter) && (tag_filter == "" || has_tag(tags, tag_filter))) {

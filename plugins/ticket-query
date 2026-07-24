@@ -1,13 +1,29 @@
 #!/usr/bin/env bash
 # tk-plugin: Output tickets as JSON, optionally filtered with jq
-# tk-plugin-version: 1.0.0
+# tk-plugin-version: 1.1.0
 set -euo pipefail
 
 filter="${1:-}"
 
-# Generate all JSON in one awk pass
-json_output=$(awk '
-BEGIN { FS=": "; in_front=0 }
+files=("$TICKETS_DIR"/*.md)
+[[ -e "${files[0]}" ]] || exit 0
+
+jq_filter="."
+[[ -n "$filter" ]] && jq_filter="select($filter)"
+
+# Generate escaped JSON in one awk pass, then validate/filter it in one jq pass.
+awk '
+BEGIN {
+    FS=": "
+    in_front=0
+    squote = sprintf("%c", 39)
+    double_squote = squote squote
+    for (code = 1; code < 32; code++) {
+        json_escapes[sprintf("%c", code)] = sprintf("\\u%04x", code)
+    }
+    json_escapes["\\"] = "\\\\"
+    json_escapes["\""] = "\\\""
+}
 FNR==1 {
     if (prev_file) emit()
     field_count=0; in_front=0
@@ -22,6 +38,21 @@ in_front && /^[a-zA-Z]/ {
     field_keys[field_count] = key
     field_vals[field_count] = val
 }
+function yaml_single_quote_decode(value) {
+    if (length(value) >= 2 && substr(value, 1, 1) == squote && substr(value, length(value), 1) == squote) {
+        value = substr(value, 2, length(value) - 2)
+        gsub(double_squote, squote, value)
+    }
+    return value
+}
+function json_escape(value, escaped, position, character) {
+    escaped = ""
+    for (position = 1; position <= length(value); position++) {
+        character = substr(value, position, 1)
+        escaped = escaped ((character in json_escapes) ? json_escapes[character] : character)
+    }
+    return escaped
+}
 function emit() {
     if (field_count > 0) {
         printf "{"
@@ -31,27 +62,23 @@ function emit() {
             val = field_vals[i]
             # Handle arrays
             if (val ~ /^\[.*\]$/) {
-                gsub(/^\[|\]$/, "", val)
+                val = substr(val, 2, length(val) - 2)
                 n = split(val, items, ", *")
-                printf "\"%s\":[", key
+                printf "\"%s\":[", json_escape(key)
+                item_count = 0
                 for (j = 1; j <= n; j++) {
-                    if (j > 1) printf ","
                     gsub(/^ +| +$/, "", items[j])
-                    if (items[j] != "") printf "\"%s\"", items[j]
+                    if (items[j] == "") continue
+                    if (item_count++ > 0) printf ","
+                    printf "\"%s\"", json_escape(yaml_single_quote_decode(items[j]))
                 }
                 printf "]"
             } else {
-                printf "\"%s\":\"%s\"", key, val
+                printf "\"%s\":\"%s\"", json_escape(key), json_escape(yaml_single_quote_decode(val))
             }
         }
         printf "}\n"
     }
 }
 END { if (prev_file) emit() }
-' "$TICKETS_DIR"/*.md 2>/dev/null)
-
-if [[ -n "$filter" ]]; then
-    echo "$json_output" | jq -c "select($filter)"
-else
-    echo "$json_output"
-fi
+' "${files[@]}" | jq -c "$jq_filter"

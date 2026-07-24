@@ -12,7 +12,7 @@ Feature: Deferred Work
     Then the command should succeed
     And the output should be "Deferred defer-0001"
     And ticket "defer-0001" should have field "deferred" with value "true"
-    And ticket "defer-0001" should have field "defer_reason" with value "Waiting on API/docs & UX: phase 2!"
+    And ticket "defer-0001" should have YAML defer reason with value "Waiting on API/docs & UX: phase 2!"
     And ticket "defer-0001" should have field "defer_until" with value "2099-12-31"
 
   Scenario: Re-deferring replaces metadata and clears omitted options
@@ -166,7 +166,7 @@ Feature: Deferred Work
     And I run "ticket reopen life-0001"
     Then ticket "life-0001" should have field "status" with value "open"
     And ticket "life-0001" should have field "deferred" with value "true"
-    And ticket "life-0001" should have field "defer_reason" with value "Waiting on review"
+    And ticket "life-0001" should have YAML defer reason with value "Waiting on review"
     And ticket "life-0001" should have field "defer_until" with value "9999-12-31"
     When I run "ticket deferred"
     Then the output should contain "life-0001"
@@ -182,7 +182,7 @@ Feature: Deferred Work
     When I run "ticket show visible-0001"
     Then the output should contain "deferred: true"
     And the output should contain "defer_until: 2000-01-01"
-    And the output should contain "defer_reason: Waiting on API/docs & UX: phase 2!"
+    And the shown defer reason should have YAML value "Waiting on API/docs & UX: phase 2!"
     When I run "ticket query '.id == \"visible-0001\"'"
     Then the command should succeed
     And the output should be valid JSONL
@@ -198,3 +198,25 @@ Feature: Deferred Work
     When I run "ticket query '.id == \"legacy-0001\"'"
     Then the command should succeed
     And the JSONL output should not have field "deferred"
+
+  Scenario: Free-text punctuation round trips through every deferral reader
+    Given a ticket exists with ID "punct-0001" and title "Punctuation"
+    When I defer ticket "punct-0001" with the punctuation regression reason
+    Then the command should succeed
+    And ticket "punct-0001" should store the punctuation regression reason as valid YAML
+    When I run "ticket deferred"
+    Then the output should expose the punctuation regression reason
+    When I run "ticket ls"
+    Then the output should expose the punctuation regression reason
+    When I run "ticket list"
+    Then the output should expose the punctuation regression reason
+    When I run "ticket show punct-0001"
+    Then the shown defer reason should decode to the punctuation regression reason
+
+  Scenario: Filtered query returns the exact punctuation regression reason
+    Given a ticket exists with ID "punct-0001" and title "Punctuation"
+    When I defer ticket "punct-0001" with the punctuation regression reason
+    And I run "ticket query '.id == \"punct-0001\"'"
+    Then the command should succeed
+    And the output should be valid JSONL
+    And the JSONL defer reason should equal the punctuation regression reason

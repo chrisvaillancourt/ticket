@@ -257,8 +257,15 @@ write_deferral_metadata() {
     BEGIN {
         until = ENVIRON["DEFER_UNTIL"]
         reason = ENVIRON["DEFER_REASON"]
+        squote = sprintf("%c", 39)
+        double_squote = squote squote
         in_front = 0
         front_done = 0
+    }
+    function yaml_single_quote(value, encoded) {
+        encoded = value
+        gsub(squote, double_squote, encoded)
+        return squote encoded squote
     }
     {
         if ($0 == "---" && !front_done) {
@@ -267,7 +274,7 @@ write_deferral_metadata() {
                 print
                 print "deferred: true"
                 if (until != "") print "defer_until: " until
-                if (reason != "") print "defer_reason: " reason
+                if (reason != "") print "defer_reason: " yaml_single_quote(reason)
                 next
             }
             in_front = 0
@@ -950,7 +957,12 @@ cmd_deferred() {
     today=$(_utc_today)
 
     awk -v today="$today" '
-    BEGIN { FS=": "; in_front=0 }
+    BEGIN {
+        FS=": "
+        in_front=0
+        squote = sprintf("%c", 39)
+        double_squote = squote squote
+    }
     FNR==1 {
         if (prev_file) store()
         id=""; status=""; title=""; priority=""; deferred=""; defer_until=""; defer_reason=""
@@ -966,8 +978,16 @@ cmd_deferred() {
     in_front && /^defer_reason:/ {
         defer_reason = $0
         sub(/^defer_reason:[[:space:]]*/, "", defer_reason)
+        defer_reason = yaml_single_quote_decode(defer_reason)
     }
     !in_front && /^# / && title == "" { title = substr($0, 3) }
+    function yaml_single_quote_decode(value) {
+        if (length(value) >= 2 && substr(value, 1, 1) == squote && substr(value, length(value), 1) == squote) {
+            value = substr(value, 2, length(value) - 2)
+            gsub(double_squote, squote, value)
+        }
+        return value
+    }
     function store() {
         if (id != "") {
             statuses[id] = status

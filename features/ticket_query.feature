@@ -46,3 +46,11 @@ Feature: Ticket Query
     When I run "ticket query"
     Then the command should succeed
     And the JSONL deps field should be a JSON array
+
+  Scenario: Filtered query safely escapes keys, scalars, and array elements
+    Given a ticket exists with ID "query-001" and title "Escaping fixture"
+    And ticket "query-001" has query escaping fixture fields
+    When I run "ticket query '.id == \"query-001\"'"
+    Then the command should succeed
+    And the output should be valid JSONL
+    And the JSONL output should preserve the query escaping fixture fields

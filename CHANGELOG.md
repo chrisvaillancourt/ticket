@@ -9,6 +9,8 @@
 - Inherited GitHub Release workflow and upstream-specific Homebrew/AUR publishing assets
 
 ### Fixed
+- Deferral reasons now use valid YAML single-quoted scalars and round-trip punctuation through all readers
+- `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 
@@ -25,7 +27,9 @@
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias
 - ticket-ls 1.1.0: Display stored deferral metadata, including elapsed dates
+- ticket-ls 1.1.1: Decode single-quoted deferral reasons for display
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
+- ticket-query 1.1.0: Emit valid JSON for punctuation and decode single-quoted scalar values
 - ticket-migrate-beads 1.0.1: Import tickets from .beads/issues.jsonl with normalized trailing whitespace (extracted from core)
 
 ## [0.3.2] - 2026-02-03

@@ -14,6 +14,19 @@ from behave import given, when, then, register_type, use_step_matcher
 import parse
 
 
+PUNCTUATION_REASON = '# Waiting on "API" \\ docs: owner\'s [draft] & review!'
+QUERY_ESCAPE_SCALAR = 'quote " slash \\ hash # colon: bracket [ indicator ! tab\tend'
+QUERY_ESCAPE_ARRAY = [
+    'quote"element',
+    'back\\slash',
+    'bracket[value]',
+    'hash#value',
+    'colon:value',
+    'tab\tvalue',
+    "apostrophe's",
+]
+
+
 # Use regex matcher for more flexible step definitions
 use_step_matcher("re")
 
@@ -71,6 +84,37 @@ def set_ticket_field(context, ticket_id, field, value):
     else:
         content = content.replace('---\n', f'---\n{replacement}\n', 1)
     ticket_path.write_text(content)
+
+
+def encode_yaml_single_quoted_scalar(value):
+    """Encode one-line text as the YAML single-quoted subset used by tickets."""
+    return "'" + value.replace("'", "''") + "'"
+
+
+def decode_yaml_single_quoted_scalar(value):
+    """Decode and validate the YAML single-quoted subset used by tickets."""
+    assert len(value) >= 2 and value[0] == "'" and value[-1] == "'", \
+        f"Expected a single-quoted YAML scalar, got: {value!r}"
+    inner = value[1:-1]
+    decoded = []
+    index = 0
+    while index < len(inner):
+        if inner[index] == "'":
+            assert index + 1 < len(inner) and inner[index + 1] == "'", \
+                f"Unescaped apostrophe in YAML scalar: {value!r}"
+            decoded.append("'")
+            index += 2
+        else:
+            decoded.append(inner[index])
+            index += 1
+    return ''.join(decoded)
+
+
+def frontmatter_field_value(content, field):
+    """Return the raw value for a frontmatter field."""
+    match = re.search(rf'^{re.escape(field)}:\s*(.*)$', content, re.MULTILINE)
+    assert match, f"Field '{field}' not found\nContent: {content}"
+    return match.group(1)
 
 
 def assert_normalized_trailing_whitespace(ticket_path):
@@ -167,6 +211,21 @@ def step_remember_ticket_content(context, ticket_id):
     if not hasattr(context, 'remembered_ticket_content'):
         context.remembered_ticket_content = {}
     context.remembered_ticket_content[ticket_id] = ticket_path.read_bytes()
+
+
+@given(r'ticket "(?P<ticket_id>[^"]+)" has query escaping fixture fields')
+def step_ticket_has_query_escaping_fields(context, ticket_id):
+    """Add YAML-subset fixture fields containing JSON-sensitive characters."""
+    set_ticket_field(
+        context,
+        ticket_id,
+        'special"key',
+        encode_yaml_single_quoted_scalar(QUERY_ESCAPE_SCALAR)
+    )
+    encoded_items = ', '.join(
+        encode_yaml_single_quoted_scalar(item) for item in QUERY_ESCAPE_ARRAY
+    )
+    set_ticket_field(context, ticket_id, 'special_list', f'[{encoded_items}]')
 
 
 @given(r'ticket "(?P<ticket_id>[^"]+)" depends on "(?P<dep_id>[^"]+)"')
@@ -406,6 +465,25 @@ def step_defer_with_multiline_reason(context, ticket_id, control):
     context.returncode = result.returncode
 
 
+@when(r'I defer ticket "(?P<ticket_id>[^"]+)" with the punctuation regression reason')
+def step_defer_with_punctuation_reason(context, ticket_id):
+    """Defer with YAML- and JSON-sensitive punctuation using direct argv."""
+    ticket_script = get_ticket_script(context)
+    cwd = getattr(context, 'working_dir', context.test_dir)
+    result = subprocess.run(
+        [ticket_script, 'defer', ticket_id, '--reason', PUNCTUATION_REASON],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=os.environ.copy()
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+
+
 # ============================================================================
 # Then Steps
 # ============================================================================
@@ -449,6 +527,28 @@ def step_output_not_contains(context, text):
     """Assert output does not contain text."""
     output = context.stdout + context.stderr
     assert text not in output, f"Expected output to NOT contain '{text}'\nActual output: {output}"
+
+
+@then(r'the output should expose the punctuation regression reason')
+def step_output_exposes_punctuation_reason(context):
+    """Assert a human-readable command displays the decoded reason exactly."""
+    output = context.stdout + context.stderr
+    assert PUNCTUATION_REASON in output, \
+        f"Expected exact punctuation reason in output\nActual output: {output}"
+
+
+@then(r'the shown defer reason should have YAML value "(?P<value>[^"]+)"')
+def step_show_has_yaml_defer_reason(context, value):
+    """Assert show emits a semantically exact single-quoted YAML scalar."""
+    raw = frontmatter_field_value(context.stdout, 'defer_reason')
+    assert decode_yaml_single_quoted_scalar(raw) == value
+
+
+@then(r'the shown defer reason should decode to the punctuation regression reason')
+def step_show_decodes_punctuation_reason(context):
+    """Assert show preserves exact punctuation through YAML encoding."""
+    raw = frontmatter_field_value(context.stdout, 'defer_reason')
+    assert decode_yaml_single_quoted_scalar(raw) == PUNCTUATION_REASON
 
 
 @then(r'the output should match a ticket ID pattern')
@@ -568,6 +668,22 @@ def step_ticket_unchanged(context, ticket_id):
     expected = context.remembered_ticket_content[ticket_id]
     actual = ticket_path.read_bytes()
     assert actual == expected, f"Ticket '{ticket_id}' changed unexpectedly"
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should have YAML defer reason with value "(?P<value>[^"]+)"')
+def step_ticket_has_yaml_defer_reason(context, ticket_id, value):
+    """Assert defer_reason is valid single-quoted YAML with an exact value."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    raw = frontmatter_field_value(ticket_path.read_text(), 'defer_reason')
+    assert decode_yaml_single_quoted_scalar(raw) == value
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should store the punctuation regression reason as valid YAML')
+def step_ticket_has_punctuation_yaml_reason(context, ticket_id):
+    """Assert punctuation round-trips through the stored YAML scalar."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    raw = frontmatter_field_value(ticket_path.read_text(), 'defer_reason')
+    assert decode_yaml_single_quoted_scalar(raw) == PUNCTUATION_REASON
 
 
 @then(r'ticket "(?P<ticket_id>[^"]+)" should have field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')
@@ -712,6 +828,25 @@ def step_jsonl_does_not_have_field(context, field):
     assert lines, "No JSONL output"
     data = json.loads(lines[0])
     assert field not in data, f"Field '{field}' unexpectedly found in JSONL"
+
+
+@then(r'the JSONL defer reason should equal the punctuation regression reason')
+def step_jsonl_has_punctuation_reason(context):
+    """Assert query returns the decoded punctuation reason exactly."""
+    lines = [line for line in context.stdout.splitlines() if line.strip()]
+    assert lines, "No JSONL output"
+    data = json.loads(lines[0])
+    assert data.get('defer_reason') == PUNCTUATION_REASON
+
+
+@then(r'the JSONL output should preserve the query escaping fixture fields')
+def step_jsonl_preserves_query_escaping_fields(context):
+    """Assert JSON-sensitive fixture keys and values round-trip exactly."""
+    lines = [line for line in context.stdout.splitlines() if line.strip()]
+    assert lines, "No JSONL output"
+    data = json.loads(lines[0])
+    assert data.get('special"key') == QUERY_ESCAPE_SCALAR
+    assert data.get('special_list') == QUERY_ESCAPE_ARRAY
 
 
 @then(r'the JSONL deps field should be a JSON array')

@@ -206,12 +206,15 @@ the stored metadata:
 ```yaml
 deferred: true
 defer_until: 2026-08-15
-defer_reason: Resume after the rollout
+defer_reason: 'Resume after the rollout'
 ```
 
 Running `defer` again replaces the deferral: options omitted from the new
 command are removed. `undefer` removes all three fields and is safe to repeat.
-Lifecycle commands preserve the fields.
+Lifecycle commands preserve the fields. Reasons use YAML single-quoted scalars
+(with embedded apostrophes doubled), so punctuation remains valid frontmatter.
+`deferred`, `ls`, `list`, and `query` decode the exact text; `show` retains the
+semantically equivalent YAML representation.
 
 Effectively deferred open or in-progress tickets appear in `deferred` and not
 in `ready`. `blocked` remains a structural dependency view, so a deferred
