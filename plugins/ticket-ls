@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tk-plugin: List tickets with optional filters
-# tk-plugin-version: 1.0.0
+# tk-plugin-version: 1.1.0
 set -euo pipefail
 
 status_filter="" assignee_filter="" tag_filter=""
@@ -19,7 +19,9 @@ awk -v status_filter="$status_filter" -v assignee_filter="$assignee_filter" -v t
 BEGIN { FS=": "; in_front=0 }
 FNR==1 {
     if (prev_file) emit()
-    id=""; status=""; title=""; deps=""; assignee=""; tags=""; in_front=0
+    id=""; status=""; title=""; deps=""; assignee=""; tags=""
+    deferred=""; defer_until=""; defer_reason=""
+    deferred_seen=0; defer_until_seen=0; defer_reason_seen=0; in_front=0
     prev_file=FILENAME
 }
 /^---$/ { in_front = !in_front; next }
@@ -27,6 +29,13 @@ in_front && /^id:/ { id = $2 }
 in_front && /^status:/ { status = $2 }
 in_front && /^assignee:/ { assignee = $2 }
 in_front && /^tags:/ { tags = $2; gsub(/[\[\] ]/, "", tags) }
+in_front && /^deferred:/ { deferred = $2; deferred_seen=1 }
+in_front && /^defer_until:/ { defer_until = $2; defer_until_seen=1 }
+in_front && /^defer_reason:/ {
+    defer_reason = $0
+    sub(/^defer_reason:[[:space:]]*/, "", defer_reason)
+    defer_reason_seen=1
+}
 in_front && /^deps:/ {
     deps = $2
     gsub(/[\[\] ]/, "", deps)
@@ -43,7 +52,12 @@ function emit() {
         deps_display = (deps != "") ? "[" deps "]" : "[]"
         gsub(/,/, ", ", deps_display)
         dep_str = (deps_display != "[]") ? " <- " deps_display : ""
-        printf "%-8s [%s] - %s%s\n", id, status, title, dep_str
+        metadata = ""
+        if (deferred_seen) metadata = "deferred=" deferred
+        if (defer_until_seen) metadata = metadata (metadata != "" ? "; " : "") "defer_until=" defer_until
+        if (defer_reason_seen) metadata = metadata (metadata != "" ? "; " : "") "defer_reason=" defer_reason
+        defer_str = (metadata != "") ? " [" metadata "]" : ""
+        printf "%-8s [%s] - %s%s%s\n", id, status, title, dep_str, defer_str
     }
 }
 ' "$TICKETS_DIR"/*.md 2>/dev/null

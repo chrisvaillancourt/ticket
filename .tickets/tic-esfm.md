@@ -1,6 +1,6 @@
 ---
 id: tic-esfm
-status: open
+status: in_progress
 deps: []
 links: []
 created: 2026-07-16T19:48:41Z

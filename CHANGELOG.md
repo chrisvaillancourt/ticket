@@ -13,6 +13,7 @@
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 
 ### Added
+- Orthogonal deferred-work metadata and `defer`, `undefer`, and `deferred` commands with UTC eligibility dates
 - Reversible checkout-local installer for core, curated plugins, and aliases
 - Plugin system: executables named `tk-<cmd>` or `ticket-<cmd>` in PATH are invoked automatically
 - `super` command to bypass plugins and run built-in commands directly
@@ -23,6 +24,7 @@
 ### Plugins
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias
+- ticket-ls 1.1.0: Display stored deferral metadata, including elapsed dates
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
 - ticket-migrate-beads 1.0.1: Import tickets from .beads/issues.jsonl with normalized trailing whitespace (extracted from core)
 

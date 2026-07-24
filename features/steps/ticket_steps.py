@@ -7,6 +7,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 from behave import given, when, then, register_type, use_step_matcher
@@ -57,6 +58,19 @@ Description
         context.tickets = {}
     context.tickets[ticket_id] = ticket_path
     return ticket_path
+
+
+def set_ticket_field(context, ticket_id, field, value):
+    """Set or insert a scalar frontmatter field in a fixture ticket."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    pattern = rf'^{re.escape(field)}:.*$'
+    replacement = f'{field}: {value}'
+    if re.search(pattern, content, re.MULTILINE):
+        content = re.sub(pattern, replacement, content, flags=re.MULTILINE)
+    else:
+        content = content.replace('---\n', f'---\n{replacement}\n', 1)
+    ticket_path.write_text(content)
 
 
 def assert_normalized_trailing_whitespace(ticket_path):
@@ -131,6 +145,28 @@ def step_ticket_has_status(context, ticket_id, status):
     content = ticket_path.read_text()
     content = re.sub(r'^status: \w+', f'status: {status}', content, flags=re.MULTILINE)
     ticket_path.write_text(content)
+
+
+@given(r'ticket "(?P<ticket_id>[^"]+)" has field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')
+def step_ticket_fixture_has_field(context, ticket_id, field, value):
+    """Set an arbitrary frontmatter field on a fixture ticket."""
+    set_ticket_field(context, ticket_id, field, value)
+
+
+@given(r'ticket "(?P<ticket_id>[^"]+)" has defer_until set to today in UTC')
+def step_ticket_defer_until_today(context, ticket_id):
+    """Set defer_until to the current UTC calendar date."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    set_ticket_field(context, ticket_id, 'defer_until', today)
+
+
+@given(r'I remember the content of ticket "(?P<ticket_id>[^"]+)"')
+def step_remember_ticket_content(context, ticket_id):
+    """Remember a ticket byte-for-byte for no-mutation assertions."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    if not hasattr(context, 'remembered_ticket_content'):
+        context.remembered_ticket_content = {}
+    context.remembered_ticket_content[ticket_id] = ticket_path.read_bytes()
 
 
 @given(r'ticket "(?P<ticket_id>[^"]+)" depends on "(?P<dep_id>[^"]+)"')
@@ -350,6 +386,26 @@ def step_run_command(context, command):
         context.last_created_id = result.stdout.strip()
 
 
+@when(r'I defer ticket "(?P<ticket_id>[^"]+)" with a reason containing (?P<control>a line feed|a carriage return)')
+def step_defer_with_multiline_reason(context, ticket_id, control):
+    """Pass a literal line break in a defer reason without shell quoting."""
+    ticket_script = get_ticket_script(context)
+    cwd = getattr(context, 'working_dir', context.test_dir)
+    separator = '\n' if control == 'a line feed' else '\r'
+    result = subprocess.run(
+        [ticket_script, 'defer', ticket_id, '--reason', f'first line{separator}second line'],
+        cwd=cwd,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=os.environ.copy()
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+
+
 # ============================================================================
 # Then Steps
 # ============================================================================
@@ -505,6 +561,15 @@ def step_ticket_does_not_have_field(context, ticket_id, field):
         f"Field '{field}' unexpectedly found in ticket\nContent: {content}"
 
 
+@then(r'ticket "(?P<ticket_id>[^"]+)" should be unchanged')
+def step_ticket_unchanged(context, ticket_id):
+    """Assert a failed command did not modify the ticket."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    expected = context.remembered_ticket_content[ticket_id]
+    actual = ticket_path.read_bytes()
+    assert actual == expected, f"Ticket '{ticket_id}' changed unexpectedly"
+
+
 @then(r'ticket "(?P<ticket_id>[^"]+)" should have field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')
 def step_ticket_has_field_value(context, ticket_id, field, value):
     """Assert ticket has a field with specific value."""
@@ -628,6 +693,25 @@ def step_jsonl_has_field(context, field):
             data = json.loads(line)
             assert field in data, f"Field '{field}' not found in JSONL\nData: {data}"
             break
+
+
+@then(r'the JSONL output should have field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')
+def step_jsonl_has_field_value(context, field, value):
+    """Assert the first JSONL object has a field with a string value."""
+    lines = [line for line in context.stdout.splitlines() if line.strip()]
+    assert lines, "No JSONL output"
+    data = json.loads(lines[0])
+    assert data.get(field) == value, \
+        f"Field '{field}' has value {data.get(field)!r}, expected {value!r}"
+
+
+@then(r'the JSONL output should not have field "(?P<field>[^"]+)"')
+def step_jsonl_does_not_have_field(context, field):
+    """Assert the first JSONL object does not have a field."""
+    lines = [line for line in context.stdout.splitlines() if line.strip()]
+    assert lines, "No JSONL output"
+    data = json.loads(lines[0])
+    assert field not in data, f"Field '{field}' unexpectedly found in JSONL"
 
 
 @then(r'the JSONL deps field should be a JSON array')

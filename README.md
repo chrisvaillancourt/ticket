@@ -155,6 +155,11 @@ Commands:
   close <id>               Set status to closed
   reopen <id>              Set status to open
   status <id> <status>     Update status (open|in_progress|closed)
+  defer <id> [options]     Defer work independently of status
+    --until <date>         Eligible on UTC date (YYYY-MM-DD)
+    --reason <text>        One-line deferral reason
+  undefer <id>             Remove all deferral metadata
+  deferred                 List effectively deferred open/in-progress tickets
   dep <id> <dep-id>        Add dependency (id depends on dep-id)
   dep tree [--full] <id>   Show dependency tree (--full disables dedup)
   dep cycle                Find dependency cycles in open tickets
@@ -178,6 +183,49 @@ Checkout plugins:
 Searches parent directories for .tickets/ (override with TICKETS_DIR env var)
 Supports partial ID matching (e.g., 'tk show 5c4' matches 'nw-5c46')
 ```
+
+## Deferred work
+
+Deferral is independent of the `open`, `in_progress`, and `closed` lifecycle
+statuses. Defer a ticket indefinitely or until a valid calendar date:
+
+```bash
+tk defer nw-5c46 --reason "Waiting on API review"
+tk defer nw-5c46 --until 2026-08-15 --reason "Resume after the rollout"
+tk deferred
+tk undefer nw-5c46
+```
+
+The option and value are separate arguments. Reasons must be one line, and
+dates must use `YYYY-MM-DD`. A deferred ticket is effective when it contains
+`deferred: true` and either has no `defer_until` or the current UTC date is
+earlier than `defer_until`. It becomes eligible on that date. Expiration does
+not rewrite the ticket, so `ls`, `list`, `show`, and `query` continue to expose
+the stored metadata:
+
+```yaml
+deferred: true
+defer_until: 2026-08-15
+defer_reason: Resume after the rollout
+```
+
+Running `defer` again replaces the deferral: options omitted from the new
+command are removed. `undefer` removes all three fields and is safe to repeat.
+Lifecycle commands preserve the fields.
+
+Effectively deferred open or in-progress tickets appear in `deferred` and not
+in `ready`. `blocked` remains a structural dependency view, so a deferred
+ticket with unresolved dependencies appears in both `deferred` and `blocked`.
+Deferring a dependency does not resolve it; dependents remain blocked until
+that dependency is closed. Closed tickets stay out of all active-work views.
+Tickets without deferral fields retain their previous behavior.
+
+This model addresses the human-input workflow described in upstream
+[issue #39](https://github.com/wedow/ticket/issues/39) without adopting the
+`pending` lifecycle status proposed by
+[PR #50](https://github.com/wedow/ticket/pull/50). Status and eligibility are
+separate concepts here; additionally, that PR's ready-loop change admits
+dependency-free pending tickets into `ready`.
 
 ## Plugins
 
