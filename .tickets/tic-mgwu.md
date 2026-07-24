@@ -1,6 +1,6 @@
 ---
 id: tic-mgwu
-status: in_progress
+status: closed
 deps: [tic-pzkp, tic-xp3y]
 links: []
 created: 2026-07-22T18:37:59Z
@@ -31,3 +31,9 @@ After code hardening and release containment are in place, enable fork workflows
 ## Acceptance Criteria
 
 Test declares read-only permissions, uses reviewed immutable action SHAs with human-readable version comments, pins uv, uses a committed lock for Behave and transitive dependencies, supports workflow_dispatch, and still runs on intended master/PR events. Release removal and all-external-contributor approval are complete first. The fork-specific Actions gate is cleared, a hosted Test run passes for fork master, and its URL/SHA are recorded. No repository secret, self-hosted runner, or pull_request_target trigger is introduced.
+
+## Notes
+
+**2026-07-24T20:30:06Z**
+
+Implementation and verification complete. Implementation commit: eea148750ef7ecd2bb0219291e2759c31171d48d. Before state: no pyproject.toml or uv.lock; Test lacked full action SHA pins, explicit permissions, and workflow_dispatch; the fork had zero workflow runs. Lock evidence: generated with exact uv 0.11.32; Behave 1.3.3 and its transitives are locked; exact-version lock check and locked dependency tree passed. Local validation passed: focused 1 feature, 25 scenarios, 106 steps; full 14 features, 169 scenarios, 1200 steps. Code review reported no meaningful issues. The authorized push delivered Release workflow deletion and the hardened Test workflow. Authorized workflow_dispatch run https://github.com/chrisvaillancourt/ticket/actions/runs/30123980610, job 89582983296, ran on master at head eea148750ef7ecd2bb0219291e2759c31171d48d and completed successfully with the hosted full suite passing 14 features, 169 scenarios, and 1200 steps. No browser gate mutation was needed. Final remote state: .github/workflows/release.yml absent, only Test present, and no Release runs. Repository safeguards remain unchanged: read token permissions, no PR approval requirement, all_external fork-PR approval policy, zero secrets/variables/environments; allowed_actions remains all and SHA enforcement remains false, explicitly deferred to tic-1b09. Final external-state review reported no meaningful issues.
