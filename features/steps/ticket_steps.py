@@ -959,6 +959,26 @@ def step_install_local_checkout(context):
     run_local_installer(context, 'install')
 
 
+@when(r'I install the local checkout through a relative path with CDPATH set')
+def step_install_local_checkout_with_cdpath(context):
+    """Run the relative installer path with a CDPATH entry that emits cd output."""
+    env = os.environ.copy()
+    env['PREFIX'] = str(context.local_prefix)
+    env['CDPATH'] = '.:' + str(Path(context.test_dir) / 'cdpath-fallback')
+    result = subprocess.run(
+        ['scripts/install-local.sh', 'install'],
+        cwd=context.local_checkout,
+        capture_output=True,
+        text=True,
+        stdin=subprocess.DEVNULL,
+        env=env,
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+
+
 @when(r'I uninstall the local checkout')
 def step_uninstall_local_checkout(context):
     run_local_installer(context, 'uninstall')

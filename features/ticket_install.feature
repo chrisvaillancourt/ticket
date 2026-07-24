@@ -57,6 +57,19 @@ Feature: Local checkout installation
       ticket-migrate-beads
       """
 
+  Scenario: Relative installer invocation ignores CDPATH output
+    When I install the local checkout through a relative path with CDPATH set
+    Then the command should succeed
+    And the local prefix should contain checkout links:
+      """
+      tk
+      ticket-edit
+      ticket-ls
+      ticket-list
+      ticket-query
+      ticket-migrate-beads
+      """
+
   Scenario Outline: A conflicting destination aborts installation atomically
     Given prefix entry "ticket-query" is a <kind>
     When I install the local checkout

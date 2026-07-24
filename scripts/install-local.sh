@@ -29,8 +29,8 @@ case "$action" in
         ;;
 esac
 
-script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
-repo_root=$(cd "$script_dir/.." && pwd -P)
+script_dir=$(CDPATH='' cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+repo_root=$(CDPATH='' cd "$script_dir/.." && pwd -P)
 
 if [[ -n "${PREFIX:-}" ]]; then
     install_prefix="$PREFIX"
