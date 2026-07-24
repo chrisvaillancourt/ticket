@@ -1,6 +1,6 @@
 ---
 id: tic-pzkp
-status: in_progress
+status: closed
 deps: []
 links: []
 created: 2026-07-22T18:37:59Z
@@ -35,3 +35,7 @@ The inherited Release workflow is disabled in GitHub and removed from the reposi
 **2026-07-22T18:40:37Z**
 
 2026-07-22 re-audit: the inherited packaging is internally inconsistent after plugin extraction. Plugin metadata reports versions 1.0.0/1.0.1, while repository tags stop at v0.3.2. Generated plugin packages can reference missing tags or mismatched hashes, and all targets remain hardcoded to wedow. The selected resolution is removal, not adaptation.
+
+**2026-07-24T17:10:13Z**
+
+Implementation completed in commit abb734f7771443a8ae3bb9f9c30f5192016f162b. Deleted .github/workflows/release.yml, scripts/publish-homebrew.sh, scripts/publish-aur.sh, pkg/aur/ticket-core/PKGBUILD, pkg/aur/ticket-extras/PKGBUILD, and pkg/aur/ticket/PKGBUILD; cleaned release, packaging, and upstream-install claims in README.md, plugins/README.md, CLAUDE.md, CHANGELOG.md, and pkg/extras.txt. The initial independent audit observed workflow 314687508 active, then its audit agent successfully executed gh workflow disable 314687508 --repo chrisvaillancourt/ticket (exit 0). A subsequent code implementer observed disabled_manually; its redundant disable returned the expected 403 because the workflow was already inactive. Final verification reports state disabled_manually; repository Actions secrets, Actions variables, environments, releases, Release-workflow runs, and all workflow runs are each zero. Full make test passed 12 features, 135 scenarios, and 881 steps with zero failures or skips. Independent review of abb734f reported no meaningful issues. Commit abb734f remains unpushed; the remote release workflow YAML will be removed only after an authorized push, while the live workflow is already disabled.
