@@ -1,6 +1,6 @@
 ---
 id: tic-mgwu
-status: open
+status: in_progress
 deps: [tic-pzkp, tic-xp3y]
 links: []
 created: 2026-07-22T18:37:59Z

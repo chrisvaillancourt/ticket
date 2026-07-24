@@ -1,0 +1,11 @@
+[project]
+name = "ticket"
+version = "0.0.0"
+requires-python = ">=3.7"
+dependencies = []
+
+[dependency-groups]
+dev = ["behave==1.3.3"]
+
+[tool.uv]
+package = false

@@ -1,4 +1,4 @@
 .PHONY: test
 
 test:
-	uv run --with behave behave
+	uv run --locked behave
