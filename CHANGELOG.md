@@ -19,6 +19,7 @@
 - Frontmatter is now only the block that starts with `---` on line 1. `status`, `close`, `dep`, and `link` no longer rewrite body lines such as `status: x` or `deps: [...]`, and a `---` rule in the body no longer makes `ready`, `blocked`, `closed`, `deferred`, `show`, `dep tree`, `dep cycle`, or `undep` read body lines as fields
 - `status`, `dep`, `link`, `defer`, and `undefer` fail with an error naming the problem (no frontmatter, unclosed frontmatter, or CRLF line endings) instead of writing into the body or reporting success; `link` checks every ticket before changing any
 - Frontmatter values are written literally, so an ID containing `&` or `\` no longer corrupts `deps` or `links`
+- `dep`, `undep`, and `unlink` compare whole IDs instead of substrings or regexes: `dep t-2 t-1` no longer says a `t-10` dependency already exists, `undep` and `unlink` no longer remove part of a longer ID or a regex match such as `ab1` for `a.1`, and `dep tree t-1` picks `t-1` instead of reporting it ambiguous with `t-10`
 
 ### Added
 - `create --description-file`, `--design-file`, and `--acceptance-file` read rich-text fields from a file, or stdin with `-`

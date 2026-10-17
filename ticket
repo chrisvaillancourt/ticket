@@ -634,9 +634,10 @@ cmd_dep_tree() {
 
     END {
         if (prev_file) store()
-        # Resolve partial ID
+        # Resolve partial ID (an exact match wins over substring matches)
         root = ""
-        for (id in statuses) {
+        if (root_pattern in statuses) root = root_pattern
+        else for (id in statuses) {
             if (index(id, root_pattern) > 0) {
                 if (root != "") {
                     print "Error: ambiguous ID " root_pattern > "/dev/stderr"
@@ -934,19 +935,12 @@ cmd_dep() {
     current_deps=$(yaml_field "$file" "deps" || true)
 
     # Add dep if not already present
-    if echo "$current_deps" | _grep -q "$dep_id"; then
+    if _list_has "$current_deps" "$dep_id"; then
         echo "Dependency already exists"
         return 0
     fi
 
-    # Update deps array
-    if [[ -z "$current_deps" || "$current_deps" == "[]" ]]; then
-        update_yaml_field "$file" "deps" "[$dep_id]"
-    else
-        local new_deps
-        new_deps=$(echo "$current_deps" | sed "s/\]/, $dep_id]/")
-        update_yaml_field "$file" "deps" "$new_deps"
-    fi
+    update_yaml_field "$file" "deps" "$(_list_add "$current_deps" "$dep_id")"
 
     echo "Added dependency: $(basename "$file" .md) -> $dep_id"
 }
@@ -1303,18 +1297,12 @@ cmd_undep() {
     local current_deps
     current_deps=$(yaml_field "$file" "deps" || true)
 
-    if ! echo "$current_deps" | _grep -q "$dep_id"; then
+    if ! _list_has "$current_deps" "$dep_id"; then
         echo "Dependency not found"
         return 1
     fi
 
-    # Remove dep from array
-    local new_deps
-    new_deps=$(echo "$current_deps" | sed "s/, *$dep_id//g; s/$dep_id, *//g; s/$dep_id//g")
-    # Clean up empty array case
-    [[ "$new_deps" == "[]" || "$new_deps" == "[, ]" || "$new_deps" == "[ ]" ]] && new_deps="[]"
-
-    update_yaml_field "$file" "deps" "$new_deps"
+    update_yaml_field "$file" "deps" "$(_list_remove "$current_deps" "$dep_id")"
     echo "Removed dependency: $(basename "$file" .md) -/-> $dep_id"
 }
 
@@ -1399,21 +1387,18 @@ cmd_unlink() {
     local current_links
     current_links=$(yaml_field "$file" "links" || true)
 
-    if [[ -z "$current_links" ]] || ! echo "$current_links" | _grep -q "$target_id"; then
+    if ! _list_has "$current_links" "$target_id"; then
         echo "Link not found"
         return 1
     fi
 
     # Remove from both files
-    for pair in "$file:$target_id" "$target_file:$id"; do
-        local f="${pair%%:*}" tid="${pair#*:}"
-        local links
-        links=$(yaml_field "$f" "links" || true)
-        [[ -z "$links" ]] || ! echo "$links" | _grep -q "$tid" && continue
-        local new_links
-        new_links=$(echo "$links" | sed "s/, *$tid//g; s/$tid, *//g; s/$tid//g")
-        [[ "$new_links" == "[]" || "$new_links" == "[, ]" || "$new_links" == "[ ]" ]] && new_links="[]"
-        update_yaml_field "$f" "links" "$new_links"
+    local -a link_files=("$file" "$target_file") link_targets=("$target_id" "$id")
+    local i links
+    for i in 0 1; do
+        links=$(yaml_field "${link_files[$i]}" "links" || true)
+        _list_has "$links" "${link_targets[$i]}" || continue
+        update_yaml_field "${link_files[$i]}" "links" "$(_list_remove "$links" "${link_targets[$i]}")"
     done
 
     echo "Removed link: $id <-> $target_id"

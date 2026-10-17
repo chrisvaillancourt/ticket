@@ -83,11 +83,63 @@ Feature: Ticket Dependencies
     And the output should be "Dependency not found"
     And ticket "task-0001" should be unchanged
 
+  Scenario: Add a dependency whose ID is a prefix of an existing one
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "task-0001" has field "deps" with value "[t-10]"
+    When I run "ticket dep task-0001 t-1"
+    Then the command should succeed
+    And the output should be "Added dependency: task-0001 -> t-1"
+    And ticket "task-0001" should have frontmatter field "deps" with value "[t-10, t-1]"
+
+  Scenario: Remove a dependency whose ID is a prefix of another dependency
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "task-0001" has field "deps" with value "[t-10, t-1]"
+    When I run "ticket undep task-0001 t-1"
+    Then the command should succeed
+    And ticket "task-0001" should have frontmatter field "deps" with value "[t-10]"
+
+  Scenario: Removing a missing dependency does not touch a longer ID
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "task-0001" has field "deps" with value "[t-10]"
+    And I remember the content of ticket "task-0001"
+    When I run "ticket undep task-0001 t-1"
+    Then the command should fail
+    And the output should be "Dependency not found"
+    And ticket "task-0001" should be unchanged
+
+  Scenario: Dependency IDs containing regex metacharacters match literally
+    Given a ticket exists with ID "a.1" and title "Dotted ID"
+    And a ticket exists with ID "ab1" and title "Plain ID"
+    And ticket "task-0001" has field "deps" with value "[ab1]"
+    And I remember the content of ticket "task-0001"
+    When I run "ticket undep task-0001 a.1"
+    Then the command should fail
+    And the output should be "Dependency not found"
+    And ticket "task-0001" should be unchanged
+
+  Scenario: Remove a dependency whose ID contains a dot
+    Given a ticket exists with ID "a.1" and title "Dotted ID"
+    And a ticket exists with ID "ab1" and title "Plain ID"
+    And ticket "task-0001" has field "deps" with value "[ab1, a.1]"
+    When I run "ticket undep task-0001 a.1"
+    Then the command should succeed
+    And ticket "task-0001" should have frontmatter field "deps" with value "[ab1]"
+
   Scenario: Dependency values are written literally
     Given a ticket exists with ID "t&1" and title "Ampersand ID"
     When I run "ticket dep task-0001 't&1'"
     Then the command should succeed
     And ticket "task-0001" should have frontmatter field "deps" with value "[t&1]"
+
+  Scenario: Dependency tree prefers an exact ID over a longer match
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    When I run "ticket dep tree t-1"
+    Then the command should succeed
+    And the output should be "t-1 [open] Short ID"
 
   Scenario: Add dependency with non-existent ticket
     When I run "ticket dep task-0001 nonexistent"

@@ -111,6 +111,45 @@ Feature: Ticket Links
     And ticket "link-0001" should be unchanged
     And ticket "bare-0001" should be unchanged
 
+  Scenario: Link adds an ID that is a prefix of an existing link
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "link-0001" has field "links" with value "[t-10]"
+    When I run "ticket link link-0001 t-1"
+    Then the command should succeed
+    And the output should be "Added link: link-0001 <-> t-1"
+    And ticket "link-0001" should have frontmatter field "links" with value "[t-10, t-1]"
+
+  Scenario: Unlink an ID that is a prefix of another link
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "link-0001" has field "links" with value "[t-10, t-1]"
+    And ticket "t-1" has field "links" with value "[link-0001]"
+    When I run "ticket unlink link-0001 t-1"
+    Then the command should succeed
+    And the output should be "Removed link: link-0001 <-> t-1"
+    And ticket "link-0001" should have frontmatter field "links" with value "[t-10]"
+    And ticket "t-1" should have frontmatter field "links" with value "[]"
+
+  Scenario: Unlinking a missing link does not touch a longer ID
+    Given a ticket exists with ID "t-1" and title "Short ID"
+    And a ticket exists with ID "t-10" and title "Long ID"
+    And ticket "link-0001" has field "links" with value "[t-10]"
+    And I remember the content of ticket "link-0001"
+    When I run "ticket unlink link-0001 t-1"
+    Then the command should fail
+    And the output should be "Link not found"
+    And ticket "link-0001" should be unchanged
+
+  Scenario: Unlink IDs containing regex metacharacters literally
+    Given a ticket exists with ID "a.1" and title "Dotted ID"
+    And a ticket exists with ID "ab1" and title "Plain ID"
+    And ticket "link-0001" has field "links" with value "[ab1, a.1]"
+    And ticket "a.1" has field "links" with value "[link-0001]"
+    When I run "ticket unlink link-0001 a.1"
+    Then the command should succeed
+    And ticket "link-0001" should have frontmatter field "links" with value "[ab1]"
+
   Scenario: Link reports pairs when no ticket has a links field
     Given ticket "link-0001" has no field "links"
     And ticket "link-0002" has no field "links"
