@@ -171,6 +171,13 @@ Feature: Ticket Listing
       | 5x      |
       |         |
 
+  Scenario: Closed works when the tickets path contains a space
+    Given a separate tickets directory exists at "with space/.tickets" with ticket "done-0001" titled "Done ticket"
+    When I run "ticket close done-0001" with TICKETS_DIR set to "with space/.tickets"
+    And I run "ticket closed" with TICKETS_DIR set to "with space/.tickets"
+    Then the command should succeed
+    And the output should contain "done-0001"
+
   Scenario: Closed with a zero limit prints nothing
     Given a ticket exists with ID "done-0001" and title "Done ticket"
     And ticket "done-0001" has status "closed"

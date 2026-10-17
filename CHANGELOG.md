@@ -17,6 +17,7 @@
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 - `status` now adds a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` adds a missing `links` field instead of reporting "All links already exist"
 - `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`
+- `closed` works when the tickets path contains a space; it passed paths through `xargs`, which split them
 - `closed --limit` rejects anything but a whole number (such as `-1`, `5x`, or an empty value) with an error instead of printing every ticket or none
 - `closed`, `ready`, `blocked`, `deferred`, and `dep cycle` succeed with no tickets instead of exiting 1 or 2 with no output; `dep cycle` prints "No dependency cycles found"
 - `create --description-file -` (and the design and acceptance forms) fails without writing when stdin is empty instead of creating a ticket with an empty field

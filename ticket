@@ -1178,9 +1178,14 @@ cmd_closed() {
 
     # List files by mtime (most recent first), filter closed, limit output.
     # awk drains its input, so the writer never gets SIGPIPE under pipefail.
-    local files
-    files=$(ls -t "$TICKETS_DIR"/*.md | awk 'NR <= 100')
-    echo "$files" | xargs awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
+    # Read one path per line into an array (not xargs, which splits paths
+    # on spaces).
+    local -a files=()
+    local path
+    while IFS= read -r path; do
+        files+=("$path")
+    done < <(ls -t "$TICKETS_DIR"/*.md | awk 'NR <= 100')
+    awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
         if (prev_file) emit()
@@ -1208,7 +1213,7 @@ cmd_closed() {
         if (prev_file) emit()
         for (i = 1; i <= count; i++) print output[i]
     }
-    ' | awk -v limit="$limit" 'NR <= limit'
+    ' "${files[@]}" | awk -v limit="$limit" 'NR <= limit'
 }
 
 cmd_blocked() {
