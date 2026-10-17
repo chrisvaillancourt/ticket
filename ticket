@@ -1143,9 +1143,10 @@ cmd_closed() {
         esac
     done
 
-    # List files by mtime (most recent first), filter closed, limit output
+    # List files by mtime (most recent first), filter closed, limit output.
+    # awk drains its input, so the writer never gets SIGPIPE under pipefail.
     local files
-    files=$(ls -t "$TICKETS_DIR"/*.md 2>/dev/null | head -n 100)
+    files=$(ls -t "$TICKETS_DIR"/*.md 2>/dev/null | awk 'NR <= 100')
     [[ -z "$files" ]] && return 0
     echo "$files" | xargs awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
     BEGIN { FS=": "; in_front=0 }
@@ -1175,7 +1176,7 @@ cmd_closed() {
         if (prev_file) emit()
         for (i = 1; i <= count; i++) print output[i]
     }
-    ' | head -n "$limit"
+    ' | awk -v limit="$limit" 'NR <= limit'
 }
 
 cmd_blocked() {

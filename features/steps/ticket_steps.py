@@ -182,6 +182,19 @@ def step_beads_issues_file(context):
     (beads_dir / 'issues.jsonl').write_text(context.text.strip() + '\n')
 
 
+@given(r'(?P<count>\d+) closed tickets with long IDs exist')
+def step_many_long_closed_tickets(context, count):
+    """Write closed tickets whose paths overflow a pipe buffer when listed."""
+    tickets_dir = Path(context.test_dir) / '.tickets'
+    tickets_dir.mkdir(parents=True, exist_ok=True)
+    for n in range(int(count)):
+        ticket_id = f"long-{'x' * 200}-{n:04d}"
+        (tickets_dir / f'{ticket_id}.md').write_text(
+            f'---\nid: {ticket_id}\nstatus: closed\ndeps: []\nlinks: []\n'
+            f'type: task\npriority: 2\n---\n# Closed {n}\n'
+        )
+
+
 @given(r'a file "(?P<path>[^"]+)" containing:')
 def step_file_containing(context, path):
     """Write the scenario text, with one final newline, to a test file."""

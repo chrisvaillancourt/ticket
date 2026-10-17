@@ -215,3 +215,9 @@ Feature: Ticket Listing
     When I run "ticket ls --status=open"
     Then the command should succeed
     And the output should contain "list-0001"
+
+  Scenario: Closed listing survives a ticket list larger than a pipe buffer
+    Given 400 closed tickets with long IDs exist
+    When I run "ticket closed --limit=3"
+    Then the command should succeed
+    And the output line count should be 3

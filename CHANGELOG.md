@@ -15,7 +15,8 @@
 - `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
-- `status`, `dep`, and `link` now add a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` records and reports links on tickets with no `links` field
+- `status` now adds a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` adds a missing `links` field instead of reporting "All links already exist"
+- `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`
 - Frontmatter is now only the block that starts with `---` on line 1. `status`, `close`, `dep`, and `link` no longer rewrite body lines such as `status: x` or `deps: [...]`, and a `---` rule in the body no longer makes `ready`, `blocked`, `closed`, `deferred`, `show`, `dep tree`, `dep cycle`, or `undep` read body lines as fields
 - `status`, `dep`, `link`, `defer`, and `undefer` fail with an error naming the problem (no frontmatter, unclosed frontmatter, or CRLF line endings) instead of writing into the body or reporting success; `link` checks every ticket before changing any
 - Frontmatter values are written literally, so an ID containing `&` or `\` no longer corrupts `deps` or `links`
