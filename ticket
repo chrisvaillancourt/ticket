@@ -294,10 +294,10 @@ write_deferral_metadata() {
 }
 
 cmd_create() {
-    ensure_dir
-
     local title="" description="" design="" acceptance=""
+    local description_file="" design_file="" acceptance_file="" inline_fields=""
     local priority=2 issue_type="task" assignee="" external_ref="" parent="" tags=""
+    local dry_run=0
 
     # Default assignee to git user.name if available
     assignee=$(git config user.name 2>/dev/null || true)
@@ -305,9 +305,13 @@ cmd_create() {
     # Parse args
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -d|--description) description="$2"; shift 2 ;;
-            --design) design="$2"; shift 2 ;;
-            --acceptance) acceptance="$2"; shift 2 ;;
+            -d|--description) description="$2"; inline_fields+=" description"; shift 2 ;;
+            --design) design="$2"; inline_fields+=" design"; shift 2 ;;
+            --acceptance) acceptance="$2"; inline_fields+=" acceptance"; shift 2 ;;
+            --description-file) description_file="$2"; shift 2 ;;
+            --design-file) design_file="$2"; shift 2 ;;
+            --acceptance-file) acceptance_file="$2"; shift 2 ;;
+            --dry-run) dry_run=1; shift ;;
             -p|--priority) priority="$2"; shift 2 ;;
             -t|--type) issue_type="$2"; shift 2 ;;
             -a|--assignee) assignee="$2"; shift 2 ;;
@@ -317,6 +321,32 @@ cmd_create() {
             -*) echo "Unknown option: $1" >&2; return 1 ;;
             *) title="$1"; shift ;;
         esac
+    done
+
+    # Read rich-text fields given as files ('-' reads stdin)
+    local field file_var path content stdin_field=""
+    for field in description design acceptance; do
+        file_var="${field}_file"
+        path="${!file_var}"
+        [[ -z "$path" ]] && continue
+        if [[ " $inline_fields " == *" $field "* ]]; then
+            echo "Error: use either --$field or --$field-file, not both" >&2
+            return 1
+        fi
+        if [[ "$path" == "-" ]]; then
+            if [[ -n "$stdin_field" ]]; then
+                echo "Error: only one field can read from stdin" >&2
+                return 1
+            fi
+            stdin_field="$field"
+            content=$(cat)
+        elif [[ -f "$path" && -r "$path" ]]; then
+            content=$(cat -- "$path")
+        else
+            echo "Error: cannot read $field file '$path'" >&2
+            return 1
+        fi
+        printf -v "$field" '%s' "$content"
     done
 
     # Validate and resolve parent if specified
@@ -336,6 +366,14 @@ cmd_create() {
     local file="$TICKETS_DIR/${id}.md"
     local now
     now=$(_iso_date)
+
+    # Dry run renders the same bytes to stdout and writes nothing
+    local out="$file"
+    if [[ $dry_run -eq 1 ]]; then
+        out=/dev/stdout
+    else
+        ensure_dir
+    fi
 
     {
         printf '%s\n' \
@@ -365,9 +403,9 @@ cmd_create() {
             printf '\n\n## Acceptance Criteria\n\n%s' "$acceptance"
         fi
         printf '\n'
-    } > "$file"
+    } > "$out"
 
-    echo "$id"
+    [[ $dry_run -eq 1 ]] || echo "$id"
 }
 
 # Valid statuses
@@ -1566,14 +1604,18 @@ Usage: $cmd <command> [args]
 Commands:
   create [title] [options] Create ticket, prints ID
     -d, --description      Description text
+    --description-file     Read description from a file (- for stdin)
     --design               Design notes
+    --design-file          Read design notes from a file (- for stdin)
     --acceptance           Acceptance criteria
+    --acceptance-file      Read acceptance criteria from a file (- for stdin)
     -t, --type             Type (bug|feature|task|epic|chore) [default: task]
     -p, --priority         Priority 0-4, 0=highest [default: 2]
     -a, --assignee         Assignee
     --external-ref         External reference (e.g., gh-123, JIRA-456)
     --parent               Parent ticket ID
     --tags                 Comma-separated tags (e.g., --tags ui,backend,urgent)
+    --dry-run              Print the ticket without writing it (ID not reserved)
   start <id>               Set status to in_progress
   close <id>               Set status to closed
   reopen <id>              Set status to open

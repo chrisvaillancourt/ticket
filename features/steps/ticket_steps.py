@@ -163,6 +163,12 @@ def step_beads_issues_file(context):
     (beads_dir / 'issues.jsonl').write_text(context.text.strip() + '\n')
 
 
+@given(r'a file "(?P<path>[^"]+)" containing:')
+def step_file_containing(context, path):
+    """Write the scenario text, with one final newline, to a test file."""
+    (Path(context.test_dir) / path).write_text(context.text + '\n')
+
+
 @given(r'a ticket exists with ID "(?P<ticket_id>[^"]+)" and title "(?P<title>[^"]+)" with priority (?P<priority>\d+)')
 def step_ticket_exists_with_priority(context, ticket_id, title, priority):
     """Create a ticket with given ID, title, and priority."""
@@ -617,6 +623,38 @@ def step_created_ticket_contains(context, text):
     ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
     content = ticket_path.read_text()
     assert text in content, f"Ticket does not contain '{text}'\nContent: {content}"
+
+
+@then(r'the created ticket body should be:')
+def step_created_ticket_body(context):
+    """Assert the Markdown after the frontmatter matches exactly."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{context.last_created_id}.md'
+    content = ticket_path.read_text()
+    body = content.split('\n---\n', 1)[1]
+    expected = context.text + '\n'
+    assert body == expected, f"Expected body:\n{expected!r}\nActual body:\n{body!r}"
+
+
+@then(r'the tickets directory should not exist')
+def step_tickets_dir_absent(context):
+    """Assert no .tickets directory was created."""
+    tickets_dir = Path(context.test_dir) / '.tickets'
+    assert not tickets_dir.exists(), f".tickets directory exists: {list(tickets_dir.iterdir())}"
+
+
+@then(r'no ticket files should exist')
+def step_no_ticket_files(context):
+    """Assert the tickets directory holds no ticket files."""
+    tickets_dir = Path(context.test_dir) / '.tickets'
+    files = sorted(tickets_dir.glob('*.md')) if tickets_dir.exists() else []
+    assert not files, f"Unexpected ticket files: {files}"
+
+
+@then(r'the raw output should end with exactly one newline')
+def step_raw_output_one_newline(context):
+    """Assert unstripped stdout ends in exactly one LF."""
+    out = context.result.stdout
+    assert out.endswith('\n') and not out.endswith('\n\n'), f"Output ending: {out[-20:]!r}"
 
 
 @then(r'the created ticket should have field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')

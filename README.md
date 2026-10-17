@@ -146,14 +146,18 @@ Usage: tk <command> [args]
 Commands:
   create [title] [options] Create ticket, prints ID
     -d, --description      Description text
+    --description-file     Read description from a file (- for stdin)
     --design               Design notes
+    --design-file          Read design notes from a file (- for stdin)
     --acceptance           Acceptance criteria
+    --acceptance-file      Read acceptance criteria from a file (- for stdin)
     -t, --type             Type (bug|feature|task|epic|chore) [default: task]
     -p, --priority         Priority 0-4, 0=highest [default: 2]
     -a, --assignee         Assignee [default: git user.name]
     --external-ref         External reference (e.g., gh-123, JIRA-456)
     --parent               Parent ticket ID
     --tags                 Comma-separated tags (e.g., --tags ui,backend,urgent)
+    --dry-run              Print the ticket without writing it (ID not reserved)
   start <id>               Set status to in_progress
   close <id>               Set status to closed
   reopen <id>              Set status to open
@@ -185,6 +189,20 @@ Checkout plugins:
 
 Searches parent directories for .tickets/ (override with TICKETS_DIR env var)
 Supports partial ID matching (e.g., 'tk show 5c4' matches 'nw-5c46')
+```
+
+## Multi-line fields
+
+Pass Markdown with backticks, `$`, or quotes through a file or stdin instead of
+quoting it inline. A path of `-` reads stdin; only one field can do so per call.
+Check the result with `--dry-run`, which prints the ticket without writing it:
+
+```bash
+tk create "Fix parser" --description-file notes.md --design-file design.md
+tk create "Fix parser" --acceptance-file - <<'EOF'
+- [ ] Handles `$VAR` and "quotes"
+EOF
+tk create "Fix parser" -t bug --tags parser --dry-run
 ```
 
 ## Deferred work

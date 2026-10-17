@@ -112,3 +112,108 @@ Feature: Ticket Creation
       | description and accept | -d 'Description text' --acceptance $'Acceptance text\n'    |
       | design and accept      | --design 'Design text' --acceptance $'Acceptance text\n'   |
       | all sections           | -d 'Description text' --design 'Design text' --acceptance $'Acceptance text\n' |
+
+  Scenario: Create a ticket with description from a file
+    Given a file "desc.md" containing:
+      """
+      Run `make test` with $HOME set.
+
+      ```sh
+      echo "it's fine"
+      ```
+      """
+    When I run "ticket create 'From file' --description-file desc.md"
+    Then the command should succeed
+    And the created ticket body should be:
+      """
+      # From file
+
+      Run `make test` with $HOME set.
+
+      ```sh
+      echo "it's fine"
+      ```
+      """
+
+  Scenario: Create a ticket with design and acceptance from files
+    Given a file "design.md" containing:
+      """
+      Use `$TICKETS_DIR`.
+      """
+    And a file "accept.md" containing:
+      """
+      - [ ] Handles "quotes"
+      """
+    When I run "ticket create 'Sections' --design-file design.md --acceptance-file accept.md"
+    Then the command should succeed
+    And the created ticket body should be:
+      """
+      # Sections
+
+      ## Design
+
+      Use `$TICKETS_DIR`.
+
+      ## Acceptance Criteria
+
+      - [ ] Handles "quotes"
+      """
+
+  Scenario: Create a ticket with description from stdin
+    When I run "printf 'Line one\nLine `two`\n' | ticket create 'From stdin' --description-file -"
+    Then the command should succeed
+    And the created ticket body should be:
+      """
+      # From stdin
+
+      Line one
+      Line `two`
+      """
+    And the created ticket file should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Missing field file fails without creating anything
+    Given the tickets directory does not exist
+    When I run "ticket create 'Missing' --description-file nope.md"
+    Then the command should fail
+    And the output should contain "Error: cannot read description file 'nope.md'"
+    And the tickets directory should not exist
+
+  Scenario: Inline and file forms of one field conflict
+    Given the tickets directory does not exist
+    And a file "desc.md" containing:
+      """
+      From file
+      """
+    When I run "ticket create 'Both' -d 'Inline' --description-file desc.md"
+    Then the command should fail
+    And the output should contain "Error: use either --description or --description-file, not both"
+    And the tickets directory should not exist
+
+  Scenario: Only one field can read stdin
+    Given the tickets directory does not exist
+    When I run "printf 'x' | ticket create 'Two' --description-file - --design-file -"
+    Then the command should fail
+    And the output should contain "Error: only one field can read from stdin"
+    And the tickets directory should not exist
+
+  Scenario: Dry run prints the ticket without writing it
+    Given the tickets directory does not exist
+    When I run "ticket create 'Preview' -t bug --tags api,cli -d 'Body text' --dry-run"
+    Then the command should succeed
+    And the output should match pattern "^---\nid: [a-z0-9]+-[a-z0-9]{4}\nstatus: open\n"
+    And the output should contain "type: bug"
+    And the output should contain "tags: [api, cli]"
+    And the output should match pattern "\n---\n# Preview\n\nBody text$"
+    And the raw output should end with exactly one newline
+    And the tickets directory should not exist
+
+  Scenario: Dry run writes no ticket into an existing directory
+    When I run "ticket create 'Preview' --dry-run"
+    Then the command should succeed
+    And no ticket files should exist
+
+  Scenario: Dry run still validates the parent
+    When I run "ticket create 'Child' --parent nope --dry-run"
+    Then the command should fail
+    And the output should contain "Error: ticket 'nope' not found"
+    And no ticket files should exist
