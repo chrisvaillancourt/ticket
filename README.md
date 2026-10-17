@@ -207,7 +207,8 @@ Supports partial ID matching (e.g., 'tk show 5c4' matches 'nw-5c46')
 ## Multi-line fields
 
 Pass Markdown with backticks, `$`, or quotes through a file or stdin instead of
-quoting it inline. A path of `-` reads stdin; only one field can do so per call.
+quoting it inline. A path of `-` reads stdin; only one field can do so per call,
+and empty stdin is an error.
 Check the result with `--dry-run`, which prints the ticket without writing it:
 
 ```bash

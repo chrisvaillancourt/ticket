@@ -411,6 +411,10 @@ cmd_create() {
             fi
             stdin_field="$field"
             content=$(cat)
+            if [[ -z "$content" ]]; then
+                echo "Error: --$field-file - read nothing from stdin" >&2
+                return 1
+            fi
         elif [[ -d "$path" ]] || ! content=$(cat -- "$path" 2>/dev/null); then
             echo "Error: cannot read $field file '$path'" >&2
             return 1

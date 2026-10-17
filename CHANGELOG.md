@@ -19,6 +19,7 @@
 - `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`
 - `closed --limit` rejects anything but a whole number (such as `-1`, `5x`, or an empty value) with an error instead of printing every ticket or none
 - `closed`, `ready`, `blocked`, `deferred`, and `dep cycle` succeed with no tickets instead of exiting 1 or 2 with no output; `dep cycle` prints "No dependency cycles found"
+- `create --description-file -` (and the design and acceptance forms) fails without writing when stdin is empty instead of creating a ticket with an empty field
 - Frontmatter is now only the block that starts with `---` on line 1. `status`, `close`, `dep`, and `link` no longer rewrite body lines such as `status: x` or `deps: [...]`, and a `---` rule in the body no longer makes `ready`, `blocked`, `closed`, `deferred`, `show`, `dep tree`, `dep cycle`, or `undep` read body lines as fields
 - `status`, `dep`, `undep`, `link`, `unlink`, `defer`, and `undefer` fail with an error naming the problem (no frontmatter, unclosed frontmatter, or CRLF line endings) instead of writing into the body, reporting "not found", or reporting success; `link` and `unlink` check every ticket before changing any
 - Frontmatter values are written literally, so an ID containing `&` or `\` no longer corrupts `deps` or `links`

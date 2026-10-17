@@ -189,6 +189,13 @@ Feature: Ticket Creation
     And the output should contain "Error: use either --description or --description-file, not both"
     And the tickets directory should not exist
 
+  Scenario: Empty stdin for a field file fails without creating anything
+    Given the tickets directory does not exist
+    When I run "ticket create 'Empty' --description-file - < /dev/null"
+    Then the command should fail
+    And the output should contain "Error: --description-file - read nothing from stdin"
+    And the tickets directory should not exist
+
   Scenario: Only one field can read stdin
     Given the tickets directory does not exist
     When I run "printf 'x' | ticket create 'Two' --description-file - --design-file -"
