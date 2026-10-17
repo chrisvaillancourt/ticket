@@ -12,14 +12,19 @@ Feature: Ticket Links
   Scenario: Link two tickets
     When I run "ticket link link-0001 link-0002"
     Then the command should succeed
-    And the output should contain "Added 2 link(s) between 2 tickets"
+    And the output should be "Added link: link-0001 <-> link-0002"
     And ticket "link-0001" should have "link-0002" in links
     And ticket "link-0002" should have "link-0001" in links
 
   Scenario: Link three tickets
     When I run "ticket link link-0001 link-0002 link-0003"
     Then the command should succeed
-    And the output should contain "Added 6 link(s) between 3 tickets"
+    And the output should be:
+      """
+      Added link: link-0001 <-> link-0002
+      Added link: link-0001 <-> link-0003
+      Added link: link-0002 <-> link-0003
+      """
     And ticket "link-0001" should have "link-0002" in links
     And ticket "link-0001" should have "link-0003" in links
     And ticket "link-0002" should have "link-0001" in links
@@ -55,4 +60,8 @@ Feature: Ticket Links
     Given ticket "link-0001" is linked to "link-0002"
     When I run "ticket link link-0001 link-0002 link-0003"
     Then the command should succeed
-    And the output should contain "Added 4 link(s) between 3 tickets"
+    And the output should be:
+      """
+      Added link: link-0001 <-> link-0003
+      Added link: link-0002 <-> link-0003
+      """

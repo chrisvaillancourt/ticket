@@ -509,6 +509,14 @@ def step_output_equals(context, expected):
     assert actual == expected, f"Expected '{expected}' but got '{actual}'"
 
 
+@then(r'the output should be:')
+def step_output_equals_block(context):
+    """Assert output exactly matches the scenario's multi-line text."""
+    expected = context.text.strip()
+    actual = context.stdout
+    assert actual == expected, f"Expected:\n{expected}\nActual:\n{actual}"
+
+
 @then(r'the output should be empty')
 def step_output_empty(context):
     """Assert output is empty."""

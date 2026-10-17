@@ -1226,11 +1226,9 @@ cmd_link() {
         files+=("$file")
     done
 
-    # Use awk to update all files in one pass per file
-    local id_list
-    id_list=$(printf '%s\n' "${ids[@]}")
-
-    local count=0
+    # Use awk to update all files in one pass per file, recording the IDs
+    # newly added to each file so new pairs can be reported
+    local -a added=()
     for ((i=0; i<${#ids[@]}; i++)); do
         local file="${files[$i]}"
         local self="${ids[$i]}"
@@ -1269,24 +1267,33 @@ cmd_link() {
             }
             for (id in need) {
                 out = (out == "") ? id : out ", " id
-                added++
+                added = added " " id
             }
             print "links: [" out "]"
             found = 1
             next
         }
         { print }
-        END { printf "%d", added > "/dev/stderr" }
+        END { printf "%s ", added > "/dev/stderr" }
         ' "$file" 2>&1 >"${file}.tmp")
 
         mv "${file}.tmp" "$file"
-        ((count += result)) || true
+        added+=(" $result")
     done
 
-    if [[ $count -eq 0 ]]; then
+    # Report each undirected pair that gained a link on either side
+    local new_pairs=0
+    for ((i=0; i<${#ids[@]}; i++)); do
+        for ((j=i+1; j<${#ids[@]}; j++)); do
+            if [[ "${added[$i]}" == *" ${ids[$j]} "* || "${added[$j]}" == *" ${ids[$i]} "* ]]; then
+                echo "Added link: ${ids[$i]} <-> ${ids[$j]}"
+                ((new_pairs++)) || true
+            fi
+        done
+    done
+
+    if [[ $new_pairs -eq 0 ]]; then
         echo "All links already exist"
-    else
-        echo "Added $count link(s) between ${#ids[@]} tickets"
     fi
 }
 
@@ -1580,7 +1587,7 @@ Commands:
   dep tree [--full] <id>   Show dependency tree (--full disables dedup)
   dep cycle                Find dependency cycles in open tickets
   undep <id> <dep-id>      Remove dependency
-  link <id> <id> [id...]   Link tickets together (symmetric)
+  link <id> <id> [id...]   Link every pair of listed tickets (symmetric)
   unlink <id> <target-id>  Remove link between tickets
   ready [-a X] [-T X]      List open/in-progress tickets with deps resolved
   blocked [-a X] [-T X]    List open/in-progress tickets with unresolved deps

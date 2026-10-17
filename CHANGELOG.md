@@ -4,6 +4,7 @@
 
 ### Changed
 - Extracted `edit`, `ls`, `query`, and `migrate-beads` commands to checkout plugins
+- `link` now prints each newly linked pair (`Added link: A <-> B`) instead of a directed-link count, so linking three or more tickets shows every pair it creates
 
 ### Removed
 - Inherited GitHub Release workflow and upstream-specific Homebrew/AUR publishing assets
