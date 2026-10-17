@@ -225,6 +225,48 @@ Feature: Ticket Listing
     And I run "ticket ready" with TICKETS_DIR set to "project[1]/.tickets"
     Then the output should contain "br-0001"
 
+  Scenario: Closed accepts a space-separated limit
+    Given a ticket exists with ID "done-0001" and title "First done"
+    And a ticket exists with ID "done-0002" and title "Second done"
+    And ticket "done-0001" has status "closed"
+    And ticket "done-0002" has status "closed"
+    When I run "ticket closed --limit 1"
+    Then the command should succeed
+    And the output line count should be 1
+
+  Scenario: Closed can return more than 100 tickets
+    Given 150 closed tickets with long IDs exist
+    When I run "ticket closed --limit=120"
+    Then the command should succeed
+    And the output line count should be 120
+
+  Scenario: Closed reports a failed file listing
+    Given a ticket exists with ID "done-0001" and title "Done ticket"
+    And ticket "done-0001" has status "closed"
+    And an "ls" command on PATH that fails
+    When I run "ticket closed"
+    Then the command should fail
+    And the output should contain "Argument list too long"
+    And the output should contain "Error: could not list tickets"
+
+  Scenario Outline: Listing options without a value fail clearly
+    When I run "ticket <command> <option>"
+    Then the command should fail
+    And the output should contain "Error: <option> requires a value"
+    And the output should not contain "unbound variable"
+
+    Examples:
+      | command | option  |
+      | closed  | --limit |
+      | closed  | -a      |
+      | closed  | -T      |
+      | ready   | -a      |
+      | ready   | -T      |
+      | blocked | -a      |
+      | blocked | -T      |
+      | ls      | -a      |
+      | ls      | -T      |
+
   Scenario: Closed excludes open tickets
     Given a ticket exists with ID "done-0001" and title "Open ticket"
     When I run "ticket closed"

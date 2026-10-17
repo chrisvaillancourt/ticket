@@ -115,6 +115,15 @@ _have_tickets() {
     return 1
 }
 
+# Fail with an error unless an option that takes a value has one.
+# Usage: _require_value <option> <number of remaining arguments>
+_require_value() {
+    if [[ "$2" -lt 2 ]]; then
+        echo "Error: $1 requires a value" >&2
+        return 1
+    fi
+}
+
 # Get ticket file path (supports partial ID matching)
 ticket_path() {
     local id="$1"
@@ -977,9 +986,9 @@ cmd_ready() {
     local assignee_filter="" tag_filter=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -a) assignee_filter="$2"; shift 2 ;;
+            -a) _require_value "$1" $# || return 1; assignee_filter="$2"; shift 2 ;;
             --assignee=*) assignee_filter="${1#--assignee=}"; shift ;;
-            -T) tag_filter="$2"; shift 2 ;;
+            -T) _require_value "$1" $# || return 1; tag_filter="$2"; shift 2 ;;
             --tag=*) tag_filter="${1#--tag=}"; shift ;;
             *) shift ;;
         esac
@@ -1167,9 +1176,10 @@ cmd_closed() {
     while [[ $# -gt 0 ]]; do
         case "$1" in
             --limit=*) limit="${1#--limit=}"; shift ;;
-            -a) assignee_filter="$2"; shift 2 ;;
+            --limit) _require_value "$1" $# || return 1; limit="$2"; shift 2 ;;
+            -a) _require_value "$1" $# || return 1; assignee_filter="$2"; shift 2 ;;
             --assignee=*) assignee_filter="${1#--assignee=}"; shift ;;
-            -T) tag_filter="$2"; shift 2 ;;
+            -T) _require_value "$1" $# || return 1; tag_filter="$2"; shift 2 ;;
             --tag=*) tag_filter="${1#--tag=}"; shift ;;
             *) shift ;;
         esac
@@ -1181,15 +1191,26 @@ cmd_closed() {
     fi
     _have_tickets || return 0
 
-    # List files by mtime (most recent first), filter closed, limit output.
-    # awk drains its input, so the writer never gets SIGPIPE under pipefail.
-    # Read one path per line into an array (not xargs, which splits paths
-    # on spaces).
+    # Scan the most recent files (at least 100, or the limit if larger),
+    # filter closed, then limit output. awk drains its input, so ls never
+    # gets SIGPIPE under pipefail, and the command substitution keeps an ls
+    # failure (such as "Argument list too long") visible.
+    local listing
+    if ! listing=$(ls -t "$TICKETS_DIR"/*.md | awk -v limit="$limit" 'NR <= 100 || NR <= limit + 0'); then
+        echo "Error: could not list tickets in $TICKETS_DIR" >&2
+        return 1
+    fi
+
+    # One path per line into an array (not xargs, which splits on spaces)
     local -a files=()
     local path
     while IFS= read -r path; do
-        files+=("$path")
-    done < <(ls -t "$TICKETS_DIR"/*.md | awk 'NR <= 100')
+        if [[ -n "$path" ]]; then
+            files+=("$path")
+        fi
+    done <<< "$listing"
+    [[ ${#files[@]} -gt 0 ]] || return 0
+
     awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
@@ -1225,9 +1246,9 @@ cmd_blocked() {
     local assignee_filter="" tag_filter=""
     while [[ $# -gt 0 ]]; do
         case "$1" in
-            -a) assignee_filter="$2"; shift 2 ;;
+            -a) _require_value "$1" $# || return 1; assignee_filter="$2"; shift 2 ;;
             --assignee=*) assignee_filter="${1#--assignee=}"; shift ;;
-            -T) tag_filter="$2"; shift 2 ;;
+            -T) _require_value "$1" $# || return 1; tag_filter="$2"; shift 2 ;;
             --tag=*) tag_filter="${1#--tag=}"; shift ;;
             *) shift ;;
         esac

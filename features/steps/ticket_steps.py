@@ -195,6 +195,16 @@ def step_many_long_closed_tickets(context, count):
         )
 
 
+@given(r'an "ls" command on PATH that fails')
+def step_failing_ls(context):
+    """Shadow ls with a command that fails the way a huge argument list does."""
+    create_plugin(
+        context,
+        'ls',
+        '#!/bin/sh\necho "ls: Argument list too long" >&2\nexit 1\n'
+    )
+
+
 @given(r'a file "(?P<path>[^"]+)" containing:')
 def step_file_containing(context, path):
     """Write the scenario text, with one final newline, to a test file."""

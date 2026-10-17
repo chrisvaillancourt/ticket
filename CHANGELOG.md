@@ -18,6 +18,8 @@
 - `status` now adds a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` adds a missing `links` field instead of reporting "All links already exist"
 - `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`
 - `closed` works when the tickets path contains a space; it passed paths through `xargs`, which split them
+- `closed` accepts `--limit N` as well as `--limit=N` (the space form was ignored), and returns up to the limit instead of stopping at the 100 most recently modified tickets
+- `closed`, `ready`, and `blocked` report `-a`, `-T`, or `--limit` without a value as an error instead of failing with `unbound variable`
 - `closed --limit` rejects anything but a whole number (such as `-1`, `5x`, or an empty value) with an error instead of printing every ticket or none
 - `closed`, `ready`, `blocked`, `deferred`, and `dep cycle` succeed with no tickets instead of exiting 1 or 2 with no output; `dep cycle` prints "No dependency cycles found"
 - `create --description-file -` (and the design and acceptance forms) fails without writing when stdin is empty instead of creating a ticket with an empty field
@@ -47,6 +49,7 @@
 - ticket-ls 1.1.2: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
 - ticket-ls 1.1.3: Read fields only from the frontmatter that starts on line 1, ignoring `---` blocks in the body
 - ticket-ls 1.1.4: Exit 0 with no output when `.tickets/` holds no tickets
+- ticket-ls 1.1.5: Report `-a` or `-T` without a value as an error instead of failing with `unbound variable`
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
 - ticket-query 1.1.0: Emit valid JSON for punctuation and decode single-quoted scalar values
 - ticket-query 1.1.1: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
