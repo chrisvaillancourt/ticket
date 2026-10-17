@@ -864,8 +864,8 @@ def dispatched_builtin_commands(script_path):
             break
         if re.match(r'\s*', line).group(0) != arm_indent or not line.strip():
             continue  # arm body or blank line
-        if line.strip().startswith('*)'):
-            continue
+        if line.strip().startswith(('*)', '#')):
+            continue  # catch-all arm or comment
         arm = arm_pattern.match(line[len(arm_indent):])
         assert arm, f"Cannot parse dispatch arm in {script_path}: {line!r}"
         for alternative in arm.group(1).split('|'):
