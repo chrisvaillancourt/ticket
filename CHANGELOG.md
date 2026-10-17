@@ -17,6 +17,8 @@
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 - `status` now adds a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` adds a missing `links` field instead of reporting "All links already exist"
 - `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`
+- `closed --limit` rejects anything but a whole number (such as `-1`, `5x`, or an empty value) with an error instead of printing every ticket or none
+- `closed`, `ready`, `blocked`, `deferred`, and `dep cycle` succeed with no tickets instead of exiting 1 or 2 with no output; `dep cycle` prints "No dependency cycles found"
 - Frontmatter is now only the block that starts with `---` on line 1. `status`, `close`, `dep`, and `link` no longer rewrite body lines such as `status: x` or `deps: [...]`, and a `---` rule in the body no longer makes `ready`, `blocked`, `closed`, `deferred`, `show`, `dep tree`, `dep cycle`, or `undep` read body lines as fields
 - `status`, `dep`, `undep`, `link`, `unlink`, `defer`, and `undefer` fail with an error naming the problem (no frontmatter, unclosed frontmatter, or CRLF line endings) instead of writing into the body, reporting "not found", or reporting success; `link` and `unlink` check every ticket before changing any
 - Frontmatter values are written literally, so an ID containing `&` or `\` no longer corrupts `deps` or `links`
@@ -42,6 +44,7 @@
 - ticket-ls 1.1.1: Decode single-quoted deferral reasons for display
 - ticket-ls 1.1.2: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
 - ticket-ls 1.1.3: Read fields only from the frontmatter that starts on line 1, ignoring `---` blocks in the body
+- ticket-ls 1.1.4: Exit 0 with no output when `.tickets/` holds no tickets
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
 - ticket-query 1.1.0: Emit valid JSON for punctuation and decode single-quoted scalar values
 - ticket-query 1.1.1: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`

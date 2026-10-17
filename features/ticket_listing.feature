@@ -156,6 +156,46 @@ Feature: Ticket Listing
     Then the command should succeed
     And the output line count should be 1
 
+  Scenario Outline: Closed rejects an invalid limit
+    Given a ticket exists with ID "done-0001" and title "Done ticket"
+    And ticket "done-0001" has status "closed"
+    When I run "ticket closed --limit=<limit>"
+    Then the command should fail
+    And the output should contain "Error: --limit must be a whole number"
+    And the output should not contain "done-0001"
+
+    Examples:
+      | limit   |
+      | garbage |
+      | -1      |
+      | 5x      |
+      |         |
+
+  Scenario: Closed with a zero limit prints nothing
+    Given a ticket exists with ID "done-0001" and title "Done ticket"
+    And ticket "done-0001" has status "closed"
+    When I run "ticket closed --limit=0"
+    Then the command should succeed
+    And the output should be empty
+
+  Scenario Outline: Listing commands with no tickets succeed and print nothing
+    When I run "ticket <command>"
+    Then the command should succeed
+    And the output should be empty
+
+    Examples:
+      | command  |
+      | closed   |
+      | ready    |
+      | blocked  |
+      | deferred |
+      | ls       |
+
+  Scenario: Dependency cycle check with no tickets finds none
+    When I run "ticket dep cycle"
+    Then the command should succeed
+    And the output should be "No dependency cycles found"
+
   Scenario: Closed excludes open tickets
     Given a ticket exists with ID "done-0001" and title "Open ticket"
     When I run "ticket closed"

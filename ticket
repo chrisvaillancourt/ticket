@@ -103,6 +103,13 @@ ensure_dir() {
     mkdir -p "$TICKETS_DIR"
 }
 
+# Succeed if the tickets directory holds at least one ticket. Bulk readers
+# check this first: with no match, "$TICKETS_DIR"/*.md stays a literal glob
+# that awk and ls fail to open.
+_have_tickets() {
+    compgen -G "$TICKETS_DIR/*.md" > /dev/null
+}
+
 # Get ticket file path (supports partial ID matching)
 ticket_path() {
     local id="$1"
@@ -603,6 +610,11 @@ cmd_dep_tree() {
         return 1
     fi
 
+    if ! _have_tickets; then
+        echo "Error: ticket $root_id not found" >&2
+        return 1
+    fi
+
     awk -v root_pattern="$root_id" -v full_mode="$full_mode" '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
@@ -789,6 +801,11 @@ cmd_dep_tree() {
 }
 
 cmd_dep_cycle() {
+    if ! _have_tickets; then
+        echo "No dependency cycles found"
+        return 0
+    fi
+
     awk '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
@@ -962,6 +979,8 @@ cmd_ready() {
     local today
     today=$(_utc_today)
 
+    _have_tickets || return 0
+
     awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" -v today="$today" '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
@@ -1056,6 +1075,8 @@ cmd_deferred() {
     local today
     today=$(_utc_today)
 
+    _have_tickets || return 0
+
     awk -v today="$today" '
     BEGIN {
         FS=": "
@@ -1145,11 +1166,16 @@ cmd_closed() {
         esac
     done
 
+    if [[ ! "$limit" =~ ^[0-9]+$ ]]; then
+        echo "Error: --limit must be a whole number, got '$limit'" >&2
+        return 1
+    fi
+    _have_tickets || return 0
+
     # List files by mtime (most recent first), filter closed, limit output.
     # awk drains its input, so the writer never gets SIGPIPE under pipefail.
     local files
-    files=$(ls -t "$TICKETS_DIR"/*.md 2>/dev/null | awk 'NR <= 100')
-    [[ -z "$files" ]] && return 0
+    files=$(ls -t "$TICKETS_DIR"/*.md | awk 'NR <= 100')
     echo "$files" | xargs awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
     BEGIN { FS=": "; in_front=0 }
     FNR==1 {
@@ -1192,6 +1218,8 @@ cmd_blocked() {
             *) shift ;;
         esac
     done
+
+    _have_tickets || return 0
 
     awk -v assignee_filter="$assignee_filter" -v tag_filter="$tag_filter" '
     BEGIN { FS=": "; in_front=0 }
