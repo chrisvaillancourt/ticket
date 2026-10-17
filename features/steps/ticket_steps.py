@@ -843,22 +843,35 @@ def step_output_line_count(context, count):
 def dispatched_builtin_commands(script_path):
     """Return the command names in the script's built-in dispatch case.
 
-    The built-in dispatch is the last 'case "${1:-help}" in' block. Each arm
-    looks like 'name) ...' or 'a|b) ...'; the catch-all '*)' and the help
-    aliases are skipped.
+    The built-in dispatch is the last 'case "${1:-help}" in' block. Arms sit
+    at the indentation of the first line after 'case' and look like
+    'name) ...', 'a|b) ...', '"name") ...' or 'a | b) ...'. The catch-all
+    '*)' and the help aliases are skipped. Any other line at arm
+    indentation fails the step, so an arm this parser can't read is never
+    silently dropped.
     """
     lines = Path(script_path).read_text().splitlines()
     starts = [i for i, line in enumerate(lines)
               if line.strip() == 'case "${1:-help}" in']
     assert starts, f"No 'case \"${{1:-help}}\" in' block found in {script_path}"
+    block = lines[starts[-1] + 1:]
+    arm_indent = re.match(r'\s*', block[0]).group(0)
+    name = r'''\s*["']?-{0,2}[A-Za-z0-9_][A-Za-z0-9_-]*["']?\s*'''
+    arm_pattern = re.compile(rf'({name}(?:\|{name})*)\)')
     commands = []
-    for line in lines[starts[-1] + 1:]:
+    for line in block:
         if line.strip() == 'esac':
             break
-        arm = re.match(r'\s*([A-Za-z0-9_|-]+)\)', line)
-        if arm:
-            commands.extend(name for name in arm.group(1).split('|')
-                            if name not in ('help', '--help', '-h'))
+        if re.match(r'\s*', line).group(0) != arm_indent or not line.strip():
+            continue  # arm body or blank line
+        if line.strip().startswith('*)'):
+            continue
+        arm = arm_pattern.match(line[len(arm_indent):])
+        assert arm, f"Cannot parse dispatch arm in {script_path}: {line!r}"
+        for alternative in arm.group(1).split('|'):
+            command = alternative.strip().strip('"\'')
+            if command not in ('help', '--help', '-h'):
+                commands.append(command)
     assert 'create' in commands and 'add-note' in commands, \
         f"Dispatch parsing looks wrong; found: {commands}"
     return commands
