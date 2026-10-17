@@ -1,6 +1,6 @@
 ---
 id: tic-ilee
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-17T22:20:03Z
@@ -20,3 +20,9 @@ Render the ticket through one function used for both the real write and --dry-ru
 ## Acceptance Criteria
 
 --dry-run prints the full ticket (frontmatter and body) with the same bytes a real create would write, creates no file and no tickets directory, and still validates options such as --parent.
+
+## Notes
+
+**2026-10-17T22:27:51Z**
+
+Implemented in f8bdb67; 88c69a3 writes to fd 1 instead of reopening /dev/stdout, which truncated '>>' output on Linux (reproduced in a Debian container before and after). Verification: make test 206 scenarios pass; bash 3.2 smoke test; review findings fixed in 88c69a3.
