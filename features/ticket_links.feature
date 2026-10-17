@@ -82,6 +82,35 @@ Feature: Ticket Links
     And ticket "link-0002" should have frontmatter field "links" with value "[link-0001]"
     And ticket "link-0001" should end with exactly one newline and have no trailing whitespace
 
+  Scenario: Link leaves a links line in the body alone
+    Given ticket "link-0001" has no field "links"
+    And ticket "link-0001" body ends with:
+      """
+
+      links: [link-0003]
+      """
+    When I run "ticket link link-0001 link-0002"
+    Then the command should succeed
+    And the output should be "Added link: link-0001 <-> link-0002"
+    And ticket "link-0001" should have frontmatter field "links" with value "[link-0002]"
+    And the body of ticket "link-0001" should contain the line "links: [link-0003]"
+
+  Scenario: Link checks every ticket before writing any
+    Given a file ".tickets/bare-0001.md" containing:
+      """
+      # Bare ticket
+
+      No frontmatter here.
+      """
+    And ticket "link-0001" has no field "links"
+    And I remember the content of ticket "link-0001"
+    And I remember the content of ticket "bare-0001"
+    When I run "ticket link link-0001 bare-0001"
+    Then the command should fail
+    And the output should contain "no YAML frontmatter"
+    And ticket "link-0001" should be unchanged
+    And ticket "bare-0001" should be unchanged
+
   Scenario: Link reports pairs when no ticket has a links field
     Given ticket "link-0001" has no field "links"
     And ticket "link-0002" has no field "links"

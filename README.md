@@ -6,6 +6,8 @@ The git-backed issue tracker for AI agents. Rooted in the Unix Philosophy, `tk` 
 
 Tickets are markdown files with YAML frontmatter in `.tickets/`. This allows AI agents to easily search them for relevant content without dumping ten thousand character JSONL lines into their context window.
 
+The frontmatter starts with a `---` line on line 1 and ends at the next `---` line. `tk` reads and writes fields only inside that block, so body text such as `---` rules or a line starting `status:` is left alone. Commands that change a ticket fail without writing when it has no frontmatter, an unclosed one, or CRLF line endings.
+
 Using ticket IDs as file names also allows IDEs to quickly navigate to the ticket for you. For example, you might run `git log` in your terminal and see something like:
 
 ```

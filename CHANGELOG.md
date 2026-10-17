@@ -15,7 +15,10 @@
 - `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
-- `status`, `dep`, and `link` now add a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, `link` records and reports links on tickets with no `links` field, and a ticket with no frontmatter now fails with an error
+- `status`, `dep`, and `link` now add a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` records and reports links on tickets with no `links` field
+- Frontmatter is now only the block that starts with `---` on line 1. `status`, `close`, `dep`, and `link` no longer rewrite body lines such as `status: x` or `deps: [...]`, and a `---` rule in the body no longer makes `ready`, `blocked`, `closed`, `deferred`, `show`, `dep tree`, `dep cycle`, or `undep` read body lines as fields
+- `status`, `dep`, `link`, `defer`, and `undefer` fail with an error naming the problem (no frontmatter, unclosed frontmatter, or CRLF line endings) instead of writing into the body or reporting success; `link` checks every ticket before changing any
+- Frontmatter values are written literally, so an ID containing `&` or `\` no longer corrupts `deps` or `links`
 
 ### Added
 - `create --description-file`, `--design-file`, and `--acceptance-file` read rich-text fields from a file, or stdin with `-`
@@ -36,9 +39,11 @@
 - ticket-ls 1.1.0: Display stored deferral metadata, including elapsed dates
 - ticket-ls 1.1.1: Decode single-quoted deferral reasons for display
 - ticket-ls 1.1.2: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
+- ticket-ls 1.1.3: Read fields only from the frontmatter that starts on line 1, ignoring `---` blocks in the body
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
 - ticket-query 1.1.0: Emit valid JSON for punctuation and decode single-quoted scalar values
 - ticket-query 1.1.1: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
+- ticket-query 1.1.2: Read fields only from the frontmatter that starts on line 1, ignoring `---` blocks in the body
 - ticket-migrate-beads 1.0.1: Import tickets from .beads/issues.jsonl with normalized trailing whitespace (extracted from core)
 
 ## [0.3.2] - 2026-02-03

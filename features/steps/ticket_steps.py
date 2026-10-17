@@ -228,6 +228,22 @@ def step_ticket_fixture_lacks_field(context, ticket_id, field):
     remove_ticket_field(context, ticket_id, field)
 
 
+@given(r'ticket "(?P<ticket_id>[^"]+)" body ends with:')
+def step_ticket_body_ends_with(context, ticket_id):
+    """Append the scenario text, with one final newline, to a fixture ticket."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    with ticket_path.open('a') as handle:
+        handle.write(context.text + '\n')
+
+
+@given(r'ticket "(?P<ticket_id>[^"]+)" uses CRLF line endings')
+def step_ticket_uses_crlf(context, ticket_id):
+    """Rewrite a fixture ticket with CRLF line endings."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_bytes().replace(b'\r\n', b'\n')
+    ticket_path.write_bytes(content.replace(b'\n', b'\r\n'))
+
+
 @given(r'ticket "(?P<ticket_id>[^"]+)" has defer_until set to today in UTC')
 def step_ticket_defer_until_today(context, ticket_id):
     """Set defer_until to the current UTC calendar date."""
@@ -776,6 +792,26 @@ def step_ticket_has_field_value(context, ticket_id, field, value):
     assert match, f"Field '{field}' not found in ticket\nContent: {content}"
     actual = match.group(1).strip()
     assert actual == value, f"Field '{field}' has value '{actual}', expected '{value}'"
+
+
+@then(r'the body of ticket "(?P<ticket_id>[^"]+)" should contain the line "(?P<line>[^"]+)"')
+def step_ticket_body_contains_line(context, ticket_id, line):
+    """Assert a line appears after the frontmatter, byte for byte."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    front = frontmatter_lines(content)
+    body = content.split('\n')[len(front) + 2:]
+    assert line in body, f"Line {line!r} not found in body\nContent: {content}"
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should not have frontmatter field "(?P<field>[^"]+)"')
+def step_ticket_lacks_frontmatter_field(context, ticket_id, field):
+    """Assert a field is absent from the frontmatter (the body may have it)."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    prefix = f'{field}:'
+    matches = [line for line in frontmatter_lines(content) if line.startswith(prefix)]
+    assert not matches, f"Field '{field}' unexpectedly in frontmatter\nContent: {content}"
 
 
 @then(r'ticket "(?P<ticket_id>[^"]+)" should have frontmatter field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')

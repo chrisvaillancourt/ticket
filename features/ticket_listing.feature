@@ -161,3 +161,57 @@ Feature: Ticket Listing
     When I run "ticket closed"
     Then the command should succeed
     And the output should not contain "done-0001"
+
+  Scenario: Ready ignores fields inside a body --- block
+    Given a ticket exists with ID "ready-001" and title "Ruled ticket"
+    And ticket "ready-001" body ends with:
+      """
+
+      ---
+      status: closed
+      ---
+      """
+    When I run "ticket ready"
+    Then the command should succeed
+    And the output should contain "ready-001"
+
+  Scenario: Blocked ignores deps inside a body --- block
+    Given a ticket exists with ID "block-001" and title "Blocked ticket"
+    And a ticket exists with ID "block-002" and title "Blocker ticket"
+    And ticket "block-001" depends on "block-002"
+    And ticket "block-001" body ends with:
+      """
+
+      ---
+      deps: []
+      ---
+      """
+    When I run "ticket blocked"
+    Then the command should succeed
+    And the output should contain "<- [block-002]"
+
+  Scenario: Closed ignores status inside a body --- block
+    Given a ticket exists with ID "list-0001" and title "Open ticket"
+    And ticket "list-0001" body ends with:
+      """
+
+      ---
+      status: closed
+      ---
+      """
+    When I run "ticket closed"
+    Then the command should succeed
+    And the output should not contain "list-0001"
+
+  Scenario: List ignores status inside a body --- block
+    Given a ticket exists with ID "list-0001" and title "Open ticket"
+    And ticket "list-0001" body ends with:
+      """
+
+      ---
+      status: closed
+      ---
+      """
+    When I run "ticket ls --status=open"
+    Then the command should succeed
+    And the output should contain "list-0001"

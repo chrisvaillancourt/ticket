@@ -13,7 +13,8 @@ This is a fork of `wedow/ticket`. Read `docs/fork-maintenance.md` before proposi
 Key functions:
 - `generate_id()` - Creates IDs from directory name prefix + random suffix
 - `ticket_path()` - Resolves partial IDs to full file paths
-- `yaml_field()` / `update_yaml_field()` - YAML frontmatter manipulation via sed; missing fields are inserted with awk (`insert_yaml_field()`) because BSD sed lacks GNU's `0,/re/` address
+- `yaml_field()` / `update_yaml_field()` / `remove_yaml_fields()` - YAML frontmatter reads and writes via awk. Frontmatter is the block from a `---` on line 1 to the next `---`; writers share `_edit_frontmatter()`, which passes values through `ENVIRON` (no sed escaping) and refuses files without that block. Bulk awk readers (and the `ls`/`query` plugins) open the block only on `FNR == 1`, so body `---` rules never toggle it
+- `_list_has()` / `_list_add()` / `_list_remove()` - exact-match edits of `[a, b]` lists (deps, links); never grep or sed an ID
 - `cmd_*()` - Command handlers
 - `cmd_ready()`, `cmd_blocked()`, `cmd_ls()` - awk-based bulk listing with sorting
 

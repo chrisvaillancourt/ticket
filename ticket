@@ -79,14 +79,6 @@ _strip_trailing_newlines() {
     printf '%s' "$value"
 }
 
-# Portable sed -i (BSD requires -i '', GNU uses -i)
-_sed_i() {
-    local file="$1"
-    shift
-    local tmp="${file}.tmp.$$"
-    sed "$@" "$file" > "$tmp" && mv "$tmp" "$file"
-}
-
 # Generate ticket ID from directory name + random string
 generate_id() {
     local dir_name
@@ -141,90 +133,158 @@ ticket_path() {
     fi
 }
 
-# Extract YAML field value
+# Frontmatter is the block from a "---" on line 1 to the next "---" line.
+# Every reader and writer below looks only inside that block, so body text
+# (including "---" rules and lines like "status: x") is never parsed or
+# rewritten.
+
+# Print a frontmatter field's value; return 1 if the field is absent.
 yaml_field() {
     local file="$1"
     local field="$2"
-    sed -n '/^---$/,/^---$/p' "$file" | _grep "^${field}:" | sed "s/^${field}: *//"
-}
-
-# Update YAML field
-update_yaml_field() {
-    local file="$1"
-    local field="$2"
-    local value="$3"
-
-    if _grep -q "^${field}:" "$file"; then
-        _sed_i "$file" "s/^${field}:.*/${field}: ${value}/"
-    else
-        insert_yaml_field "$file" "$field" "$value"
-    fi
-}
-
-# Insert a frontmatter field right after the opening ---. Uses awk because
-# BSD sed silently ignores GNU's "0,/re/" address and appends nothing.
-insert_yaml_field() {
-    local file="$1"
-    local field="$2"
-    local value="$3"
-
-    local tmp="${file}.tmp.$$"
-    if YAML_INSERT_LINE="${field}: ${value}" awk '
-    !inserted && $0 == "---" {
-        print
-        print ENVIRON["YAML_INSERT_LINE"]
-        inserted = 1
-        next
+    YAML_FIELD="$field" awk '
+    BEGIN { prefix = ENVIRON["YAML_FIELD"] ":" }
+    NR == 1 { if ($0 != "---") exit; next }
+    $0 == "---" { exit }
+    index($0, prefix) == 1 {
+        value = substr($0, length(prefix) + 1)
+        sub(/^ */, "", value)
+        print value
+        found = 1
+        exit
     }
-    { print }
-    END { if (!inserted) exit 1 }
-    ' "$file" > "$tmp"; then
-        mv "$tmp" "$file"
-    else
-        rm -f "$tmp"
-        echo "Error: cannot add '$field' to $file: no YAML frontmatter" >&2
-        return 1
-    fi
+    END { exit found ? 0 : 1 }
+    ' "$file"
 }
 
-# Remove YAML frontmatter fields with one portable rewrite.
+# Rewrite or check a ticket's frontmatter in one portable awk pass.
+#   mode:    "write" rewrites the file; "check" only validates it
+#   remove:  space-separated field names to drop
+#   field:   field to set in place, or add right after the opening ---
+#   value:   value for that field (passed via ENVIRON, so it stays literal)
+#   prepend: lines to add right after the opening ---
+# Fails with an error, leaving the file untouched, when there is no
+# frontmatter to edit.
+_edit_frontmatter() {
+    local file="$1" mode="$2" remove="$3" field="$4" value="$5" prepend="$6"
+    local out="${file}.tmp.$$" check=""
+    if [[ "$mode" == check ]]; then
+        out=/dev/null
+        check=1
+    fi
+
+    local rc=0
+    FM_CHECK="$check" FM_REMOVE="$remove" FM_FIELD="$field" FM_VALUE="$value" \
+        FM_PREPEND="$prepend" awk '
+    function key_of(text) {
+        if (index(text, ":") == 0) return ""
+        sub(/:.*/, "", text)
+        return text
+    }
+    { line[NR] = $0 }
+    END {
+        if (line[1] == "---\r") exit 4
+        if (line[1] != "---") exit 3
+        for (close_at = 2; close_at <= NR && line[close_at] != "---"; close_at++) ;
+        if (close_at > NR) exit 5
+        if (ENVIRON["FM_CHECK"] == "1") exit 0
+
+        count = split(ENVIRON["FM_REMOVE"], names, " ")
+        for (i = 1; i <= count; i++) remove[names[i]] = 1
+        field = ENVIRON["FM_FIELD"]
+        field_line = field ": " ENVIRON["FM_VALUE"]
+        has_field = 0
+        for (i = 2; i < close_at; i++) if (field != "" && key_of(line[i]) == field) has_field = 1
+
+        print line[1]
+        if (ENVIRON["FM_PREPEND"] != "") print ENVIRON["FM_PREPEND"]
+        if (field != "" && !has_field) print field_line
+        for (i = 2; i < close_at; i++) {
+            key = key_of(line[i])
+            if (key != "" && (key in remove)) continue
+            if (field != "" && key == field) print field_line
+            else print line[i]
+        }
+        for (i = close_at; i <= NR; i++) print line[i]
+    }
+    ' "$file" > "$out" || rc=$?
+
+    if [[ $rc -eq 0 ]]; then
+        [[ "$out" == /dev/null ]] || mv "$out" "$file"
+        return 0
+    fi
+    [[ "$out" == /dev/null ]] || rm -f "$out"
+    case $rc in
+        3) echo "Error: $file has no YAML frontmatter (line 1 is not ---)" >&2 ;;
+        4) echo "Error: $file has CRLF line endings; convert it to LF to edit it" >&2 ;;
+        5) echo "Error: $file frontmatter is not closed (no second --- line)" >&2 ;;
+        *) echo "Error: could not update $file" >&2 ;;
+    esac
+    return 1
+}
+
+# Set a frontmatter field, adding it after the opening --- if absent.
+update_yaml_field() {
+    _edit_frontmatter "$1" write "" "$2" "$3" ""
+}
+
+# Remove frontmatter fields.
 remove_yaml_fields() {
     local file="$1"
     shift
+    _edit_frontmatter "$file" write "$*" "" "" ""
+}
 
-    local fields="$*"
-    local tmp="${file}.tmp.$$"
-    if YAML_REMOVE_FIELDS="$fields" awk '
-    BEGIN {
-        count = split(ENVIRON["YAML_REMOVE_FIELDS"], names, " ")
-        for (i = 1; i <= count; i++) remove[names[i]] = 1
-        in_front = 0
-        front_done = 0
-    }
-    {
-        if ($0 == "---" && !front_done) {
-            if (!in_front) {
-                in_front = 1
-            } else {
-                in_front = 0
-                front_done = 1
-            }
-            print
-            next
-        }
-        if (in_front) {
-            key = $0
-            sub(/:.*/, "", key)
-            if (key in remove) next
-        }
-        print
-    }
-    ' "$file" > "$tmp"; then
-        mv "$tmp" "$file"
-    else
-        rm -f "$tmp"
-        return 1
-    fi
+# Fail with an error unless the file has frontmatter that can be edited.
+check_frontmatter() {
+    _edit_frontmatter "$1" check "" "" "" ""
+}
+
+# Print the items of a flow-style YAML list such as "[a, b]", one per line.
+_list_items() {
+    local value="$1" item
+    local -a items=()
+    value="${value#"${value%%[![:space:]]*}"}"
+    value="${value%"${value##*[![:space:]]}"}"
+    value="${value#\[}"
+    value="${value%\]}"
+    IFS=',' read -r -a items <<< "$value"
+    for item in "${items[@]+"${items[@]}"}"; do
+        item="${item#"${item%%[![:space:]]*}"}"
+        item="${item%"${item##*[![:space:]]}"}"
+        if [[ -n "$item" ]]; then
+            printf '%s\n' "$item"
+        fi
+    done
+}
+
+# Succeed if a YAML list contains an item exactly (no substring or regex match).
+_list_has() {
+    local item
+    while IFS= read -r item; do
+        [[ "$item" == "$2" ]] && return 0
+    done < <(_list_items "$1")
+    return 1
+}
+
+# Print a YAML list with an item appended.
+_list_add() {
+    local out="" item
+    while IFS= read -r item; do
+        out+="${out:+, }$item"
+    done < <(_list_items "$1")
+    out+="${out:+, }$2"
+    printf '[%s]' "$out"
+}
+
+# Print a YAML list without any item equal to the given one.
+_list_remove() {
+    local out="" item
+    while IFS= read -r item; do
+        [[ "$item" == "$2" ]] && continue
+        out+="${out:+, }$item"
+    done < <(_list_items "$1")
+    printf '[%s]' "$out"
 }
 
 _utc_today() {
@@ -274,46 +334,14 @@ write_deferral_metadata() {
     local file="$1"
     local until="$2"
     local reason="$3"
-    local tmp="${file}.tmp.$$"
 
-    if DEFER_UNTIL="$until" DEFER_REASON="$reason" awk '
-    BEGIN {
-        until = ENVIRON["DEFER_UNTIL"]
-        reason = ENVIRON["DEFER_REASON"]
-        squote = sprintf("%c", 39)
-        double_squote = squote squote
-        in_front = 0
-        front_done = 0
-    }
-    function yaml_single_quote(value, encoded) {
-        encoded = value
-        gsub(squote, double_squote, encoded)
-        return squote encoded squote
-    }
-    {
-        if ($0 == "---" && !front_done) {
-            if (!in_front) {
-                in_front = 1
-                print
-                print "deferred: true"
-                if (until != "") print "defer_until: " until
-                if (reason != "") print "defer_reason: " yaml_single_quote(reason)
-                next
-            }
-            in_front = 0
-            front_done = 1
-            print
-            next
-        }
-        if (in_front && ($0 ~ /^deferred:/ || $0 ~ /^defer_until:/ || $0 ~ /^defer_reason:/)) next
-        print
-    }
-    ' "$file" > "$tmp"; then
-        mv "$tmp" "$file"
-    else
-        rm -f "$tmp"
-        return 1
-    fi
+    # The reason becomes a YAML single-quoted scalar (apostrophes doubled)
+    local q="'"
+    local lines="deferred: true"
+    [[ -n "$until" ]] && lines+=$'\n'"defer_until: $until"
+    [[ -n "$reason" ]] && lines+=$'\n'"defer_reason: $q${reason//$q/$q$q}$q"
+
+    _edit_frontmatter "$file" write "deferred defer_until defer_reason" "" "" "$lines"
 }
 
 cmd_create() {
@@ -582,7 +610,8 @@ cmd_dep_tree() {
         id=""; status=""; title=""; deps=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^deps:/ {
@@ -766,7 +795,8 @@ cmd_dep_cycle() {
         id=""; status=""; title=""; deps=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^deps:/ {
@@ -944,7 +974,8 @@ cmd_ready() {
         deferred=""; defer_until=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^priority:/ { priority = $2 }
@@ -1042,7 +1073,8 @@ cmd_deferred() {
         in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^priority:/ { priority = $2 }
@@ -1128,7 +1160,8 @@ cmd_closed() {
         id=""; status=""; title=""; assignee=""; tags=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^assignee:/ { assignee = $2 }
@@ -1170,7 +1203,8 @@ cmd_blocked() {
         id=""; status=""; title=""; deps=""; priority=""; assignee=""; tags=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^priority:/ { priority = $2 }
@@ -1306,64 +1340,30 @@ cmd_link() {
         files+=("$file")
     done
 
-    # Give tickets without a links field an empty one for awk to fill in
+    # Check every ticket before writing any, so a bad one changes nothing
     for file in "${files[@]}"; do
-        _grep -q '^links:' "$file" || insert_yaml_field "$file" "links" "[]" || return 1
+        check_frontmatter "$file" || return 1
     done
 
-    # Use awk to update all files in one pass per file, recording the IDs
+    # Append each missing ID to each ticket's links, recording the IDs
     # newly added to each file so new pairs can be reported
     local -a added=()
+    local links new_ids
     for ((i=0; i<${#ids[@]}; i++)); do
         file="${files[$i]}"
-        local self="${ids[$i]}"
-
-        # Build list of other IDs to link
-        local others=""
+        links=$(yaml_field "$file" "links" || true)
+        new_ids=" "
         for ((j=0; j<${#ids[@]}; j++)); do
-            [[ $i -ne $j ]] && others="$others ${ids[$j]}"
+            [[ $i -eq $j ]] && continue
+            if ! _list_has "$links" "${ids[$j]}"; then
+                links=$(_list_add "$links" "${ids[$j]}")
+                new_ids+="${ids[$j]} "
+            fi
         done
-
-        # Update file with awk - add missing links
-        local result
-        result=$(awk -v self="$self" -v others="$others" -v dest="${file}.tmp" '
-        BEGIN {
-            n = split(others, other_arr, " ")
-            for (i = 1; i <= n; i++) need[other_arr[i]] = 1
-        }
-        /^links:/ {
-            # Parse existing links
-            gsub(/[\[\]]/, "", $0)
-            sub(/^links: */, "", $0)
-            m = split($0, existing, ", *")
-            for (i = 1; i <= m; i++) {
-                if (existing[i] != "") {
-                    have[existing[i]] = 1
-                    delete need[existing[i]]
-                }
-            }
-
-            # Build new links array
-            out = ""
-            for (i = 1; i <= m; i++) {
-                if (existing[i] != "") {
-                    out = (out == "") ? existing[i] : out ", " existing[i]
-                }
-            }
-            for (id in need) {
-                out = (out == "") ? id : out ", " id
-                added = added " " id
-            }
-            print "links: [" out "]" > dest
-            found = 1
-            next
-        }
-        { print > dest }
-        END { printf "%s ", added }
-        ' "$file")
-
-        mv "${file}.tmp" "$file"
-        added+=(" $result")
+        if [[ "$new_ids" != " " ]]; then
+            update_yaml_field "$file" "links" "$links"
+        fi
+        added+=("$new_ids")
     done
 
     # Report each undirected pair that gained a link on either side
@@ -1440,7 +1440,8 @@ cmd_show() {
         id=""; status=""; title=""; deps=""; links=""; parent=""; in_front=0
         prev_file=FILENAME
     }
-    /^---$/ { in_front = !in_front; next }
+    FNR == 1 && $0 == "---" { in_front = 1; next }
+    in_front && $0 == "---" { in_front = 0; next }
     in_front && /^id:/ { id = $2 }
     in_front && /^status:/ { status = $2 }
     in_front && /^deps:/ { deps = $2; gsub(/[\[\] ]/, "", deps) }
@@ -1483,9 +1484,14 @@ cmd_show() {
 
         # Now output the target file with enhancements
         in_front = 0
+        line_no = 0
         while ((getline line < target_file) > 0) {
-            if (line == "---") {
-                in_front = !in_front
+            line_no++
+            if (line_no == 1 && line == "---") {
+                in_front = 1
+                print line
+            } else if (in_front && line == "---") {
+                in_front = 0
                 print line
             } else if (in_front && line ~ /^parent:/) {
                 # Add parent title as comment

@@ -85,3 +85,21 @@ Feature: Ticket Show
     When I run "ticket show 001"
     Then the command should succeed
     And the output should contain "id: show-001"
+
+  Scenario: Show ignores fields inside a body --- block
+    Given a ticket exists with ID "show-001" and title "Parent ticket"
+    And a ticket exists with ID "show-002" and title "Ruled ticket"
+    And ticket "show-002" body ends with:
+      """
+
+      ---
+      parent: show-001
+      status: closed
+      ---
+      """
+    When I run "ticket show show-001"
+    Then the command should succeed
+    And the output should not contain "## Children"
+    When I run "ticket show show-002"
+    Then the output should contain "parent: show-001"
+    And the output should not contain "# Parent ticket"

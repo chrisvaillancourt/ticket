@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # tk-plugin: Output tickets as JSON, optionally filtered with jq
-# tk-plugin-version: 1.1.1
+# tk-plugin-version: 1.1.2
 set -euo pipefail
 
 if [[ -z "${TICKETS_DIR:-}" ]]; then
@@ -35,7 +35,8 @@ FNR==1 {
     field_count=0; in_front=0
     prev_file=FILENAME
 }
-/^---$/ { in_front = !in_front; next }
+FNR == 1 && $0 == "---" { in_front = 1; next }
+in_front && $0 == "---" { in_front = 0; next }
 in_front && /^[a-zA-Z]/ {
     key = $1
     val = substr($0, length($1) + 3)

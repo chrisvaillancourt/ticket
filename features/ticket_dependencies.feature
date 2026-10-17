@@ -56,6 +56,39 @@ Feature: Ticket Dependencies
     And the output should be "Dependency not found"
     And ticket "task-0001" should be unchanged
 
+  Scenario: Add a dependency leaves a deps line in the body alone
+    Given ticket "task-0001" has no field "deps"
+    And ticket "task-0001" body ends with:
+      """
+
+      deps: [task-0003]
+      """
+    When I run "ticket dep task-0001 task-0002"
+    Then the command should succeed
+    And the output should be "Added dependency: task-0001 -> task-0002"
+    And ticket "task-0001" should have frontmatter field "deps" with value "[task-0002]"
+    And the body of ticket "task-0001" should contain the line "deps: [task-0003]"
+
+  Scenario: Dependency commands ignore deps inside a body --- block
+    Given ticket "task-0001" body ends with:
+      """
+
+      ---
+      deps: [task-0002]
+      ---
+      """
+    And I remember the content of ticket "task-0001"
+    When I run "ticket undep task-0001 task-0002"
+    Then the command should fail
+    And the output should be "Dependency not found"
+    And ticket "task-0001" should be unchanged
+
+  Scenario: Dependency values are written literally
+    Given a ticket exists with ID "t&1" and title "Ampersand ID"
+    When I run "ticket dep task-0001 't&1'"
+    Then the command should succeed
+    And ticket "task-0001" should have frontmatter field "deps" with value "[t&1]"
+
   Scenario: Add dependency with non-existent ticket
     When I run "ticket dep task-0001 nonexistent"
     Then the command should fail
@@ -166,3 +199,28 @@ Feature: Ticket Dependencies
     And the dep tree output should have task-0010 before task-0015
     And the dep tree output should have task-0010 before task-0020
     And the dep tree output should have task-0015 before task-0020
+
+  Scenario: Dependency tree ignores deps inside a body --- block
+    Given ticket "task-0001" body ends with:
+      """
+
+      ---
+      deps: [task-0002]
+      ---
+      """
+    When I run "ticket dep tree task-0001"
+    Then the command should succeed
+    And the output should be "task-0001 [open] Main task"
+
+  Scenario: Dependency cycle ignores deps inside a body --- block
+    Given ticket "task-0001" depends on "task-0002"
+    And ticket "task-0002" body ends with:
+      """
+
+      ---
+      deps: [task-0001]
+      ---
+      """
+    When I run "ticket dep cycle"
+    Then the command should succeed
+    And the output should be "No dependency cycles found"

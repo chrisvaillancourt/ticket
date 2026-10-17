@@ -54,3 +54,18 @@ Feature: Ticket Query
     Then the command should succeed
     And the output should be valid JSONL
     And the JSONL output should preserve the query escaping fixture fields
+
+  Scenario: Query ignores fields inside a body --- block
+    Given a ticket exists with ID "query-001" and title "Ruled ticket"
+    And ticket "query-001" body ends with:
+      """
+
+      ---
+      extra: body
+      status: closed
+      ---
+      """
+    When I run "ticket query"
+    Then the command should succeed
+    And the JSONL output should not have field "extra"
+    And the JSONL output should have field "status" with value "open"

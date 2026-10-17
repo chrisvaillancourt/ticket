@@ -220,3 +220,47 @@ Feature: Deferred Work
     Then the command should succeed
     And the output should be valid JSONL
     And the JSONL defer reason should equal the punctuation regression reason
+
+  Scenario: Deferred ignores metadata inside a body --- block
+    Given a ticket exists with ID "defer-0001" and title "Ruled ticket"
+    And ticket "defer-0001" body ends with:
+      """
+
+      ---
+      deferred: true
+      ---
+      """
+    When I run "ticket deferred"
+    Then the command should succeed
+    And the output should be empty
+    When I run "ticket ready"
+    Then the output should contain "defer-0001"
+
+  Scenario: Defer a ticket without frontmatter fails without writing
+    Given a file ".tickets/bare-0001.md" containing:
+      """
+      # Bare ticket
+
+      ---
+
+      Body after a rule
+      """
+    And I remember the content of ticket "bare-0001"
+    When I run "ticket defer bare-0001 --reason 'Waiting'"
+    Then the command should fail
+    And the output should contain "no YAML frontmatter"
+    And the output should not contain "Deferred"
+    And ticket "bare-0001" should be unchanged
+
+  Scenario: Undefer leaves deferral lines in the body alone
+    Given a ticket exists with ID "defer-0001" and title "Needs input"
+    And ticket "defer-0001" body ends with:
+      """
+
+      deferred: true
+      """
+    When I run "ticket defer defer-0001"
+    And I run "ticket undefer defer-0001"
+    Then the command should succeed
+    And ticket "defer-0001" should not have frontmatter field "deferred"
+    And the body of ticket "defer-0001" should contain the line "deferred: true"
