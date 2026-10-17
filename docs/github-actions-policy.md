@@ -104,7 +104,7 @@ or environments. The workflow uses `pull_request`, not
 3. If this is a new repository, deliberately add only its exact
    `owner/repository@*` pattern. Do not enable all GitHub-owned or all verified
    actions.
-4. Re-run the audit below, compare the workflow on `master` with the local
+4. Re-run the audit below, compare the workflow on `main` with the local
    file, dispatch `Test`, and require a successful GitHub-hosted run.
 
 To deliberately add a reusable workflow, review its repository and ownership,
@@ -168,7 +168,7 @@ gh api -H "$api_version" "$repo_api/environments" |
   jq -e '.total_count == 0'
 
 # Expected result: HTTP 404, "Branch not protected".
-gh api -H "$api_version" "$repo_api/branches/master/protection"
+gh api -H "$api_version" "$repo_api/branches/main/protection"
 
 gh api -H "$api_version" "$repo_api/rulesets" |
   jq -e '. == []'
@@ -203,7 +203,7 @@ test "$actual_step_refs" = "$expected_step_refs"
 
 remote_workflow=$(mktemp)
 gh api -H "$api_version" \
-  "$repo_api/contents/.github/workflows/test.yml?ref=master" \
+  "$repo_api/contents/.github/workflows/test.yml?ref=main" \
   --jq '.content' |
   tr -d '\n' |
   base64 --decode > "$remote_workflow"
@@ -214,7 +214,7 @@ rm "$remote_workflow"
 To verify behavior after an intentional policy or workflow change:
 
 ```bash
-gh workflow run test.yml -R chrisvaillancourt/ticket --ref master
+gh workflow run test.yml -R chrisvaillancourt/ticket --ref main
 gh run list -R chrisvaillancourt/ticket \
   --workflow test.yml --event workflow_dispatch --limit 5
 gh run watch RUN_ID -R chrisvaillancourt/ticket --exit-status
@@ -223,7 +223,7 @@ gh run view RUN_ID -R chrisvaillancourt/ticket
 
 ## Deliberate branch policy
 
-There is currently no `master` branch protection and no repository ruleset.
+There is currently no `main` branch protection and no repository ruleset.
 The live audit returns HTTP 404 for branch protection and `[]` for rulesets.
 This is deliberate for a solo-maintained fork with direct local ownership, no
 production deployment, and no hosted release path.
@@ -237,7 +237,7 @@ Reconsider this decision as soon as any of these conditions becomes true:
 
 - another maintainer receives write access;
 - hosted releases are introduced; or
-- `master` becomes a deployment source.
+- `main` becomes a deployment source.
 
 ## References
 
