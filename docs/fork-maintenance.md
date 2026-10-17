@@ -46,11 +46,34 @@ fork-only automation.
 | Frontmatter fields: portable insertion of missing fields (BSD sed silently skipped it) | `70c896c` | [PR #59](https://github.com/wedow/ticket/pull/59) moves the insert to awk |
 | Frontmatter scoped to the opening block, so body lines such as `status: …` or `---` rules are never read or rewritten | `8a9f951` | none found |
 | Exact ID matching in `dep`, `undep`, `unlink`, and `link` (`t-1` no longer matches `t-10`; `undep` no longer corrupts lists) | `d80a79c` | none found |
-| `closed` no longer exits 141 on large ticket lists | `2a9c38d` | none found |
+| `closed` no longer exits 141 on large ticket lists, handles paths with spaces, validates `--limit` and accepts `--limit N` | `2a9c38d`, `c49970e`, `e118450`, `d93a6e5` | none found |
+| Field-changing commands check frontmatter on every ticket before writing; listings handle an empty `.tickets/`; options without a value give an error | `ee22df1`, `c49970e`, `a5c4831`, `d93a6e5` | none found |
 | Deferred work (`defer`, `undefer`, `deferred`) | `5c0b92b`, `ebc359e` | [issue #39](https://github.com/wedow/ticket/issues/39), [PR #50](https://github.com/wedow/ticket/pull/50) (`pending` status) |
 
 Deferral is the most opinionated of these. Offer it as a design proposal on
 issue #39, not as a drop-in pull request.
+
+### Known limits (deferred)
+
+Reviews found these and judged them not worth fixing yet. None affects the
+1,296 real tickets checked on 2026-10-17. Revisit one when real use hits it.
+
+- **Unknown options are ignored.** `ready`, `blocked`, and `closed` skip
+  options they don't recognize, as upstream does. Turning them into errors
+  could break existing callers.
+- **Very large ticket sets.** At about 6,000 tickets with long IDs, the shell
+  glob exceeds the argument limit. `closed` reports the error. `ready`,
+  `blocked`, `deferred`, `dep`, and `show` fail silently. A fix would read the
+  file list from stdin or in batches.
+- **CRLF tickets are invisible to listings.** Writers refuse them with a clear
+  error. Supporting them would be a feature.
+- **Values containing `": "` are cut short** by the listing readers, which split
+  on `": "`. No real ticket has one.
+- **Partial ID lookup treats `*`, `?`, and `[` as glob characters.** Generated
+  IDs use only `[a-z0-9-]`.
+- **`tk create` in a git worktree** takes its ID prefix from the worktree
+  directory name (for example `aa-` instead of `tic-`). Rename the file, or
+  create tickets from the main checkout.
 
 ### Fork-only changes
 
