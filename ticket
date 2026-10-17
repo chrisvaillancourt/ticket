@@ -105,9 +105,14 @@ ensure_dir() {
 
 # Succeed if the tickets directory holds at least one ticket. Bulk readers
 # check this first: with no match, "$TICKETS_DIR"/*.md stays a literal glob
-# that awk and ls fail to open.
+# that awk and ls fail to open. The directory part is quoted so brackets or
+# other glob characters in the path match literally.
 _have_tickets() {
-    compgen -G "$TICKETS_DIR/*.md" > /dev/null
+    local f
+    for f in "$TICKETS_DIR"/*.md; do
+        [[ -e "$f" ]] && return 0
+    done
+    return 1
 }
 
 # Get ticket file path (supports partial ID matching)

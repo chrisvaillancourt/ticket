@@ -203,6 +203,28 @@ Feature: Ticket Listing
     Then the command should succeed
     And the output should be "No dependency cycles found"
 
+  Scenario: Listing commands find tickets under a directory name with brackets
+    Given a separate tickets directory exists at "project[1]/.tickets" with ticket "br-0001" titled "First"
+    And a separate tickets directory exists at "project[1]/.tickets" with ticket "br-0002" titled "Second"
+    When I run "ticket dep br-0001 br-0002" with TICKETS_DIR set to "project[1]/.tickets"
+    And I run "ticket dep br-0002 br-0001" with TICKETS_DIR set to "project[1]/.tickets"
+    And I run "ticket blocked" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the output should contain "br-0001"
+    When I run "ticket dep cycle" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the output should contain "Cycle 1"
+    When I run "ticket dep tree br-0001" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the command should succeed
+    And the output should contain "br-0002"
+    When I run "ticket defer br-0001" with TICKETS_DIR set to "project[1]/.tickets"
+    And I run "ticket deferred" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the output should contain "br-0001"
+    When I run "ticket close br-0002" with TICKETS_DIR set to "project[1]/.tickets"
+    And I run "ticket closed" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the output should contain "br-0002"
+    When I run "ticket undefer br-0001" with TICKETS_DIR set to "project[1]/.tickets"
+    And I run "ticket ready" with TICKETS_DIR set to "project[1]/.tickets"
+    Then the output should contain "br-0001"
+
   Scenario: Closed excludes open tickets
     Given a ticket exists with ID "done-0001" and title "Open ticket"
     When I run "ticket closed"
