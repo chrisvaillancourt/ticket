@@ -22,3 +22,7 @@ A Behave scenario derives the built-in command list from the script's dispatch c
 **2026-10-17T22:40:27Z**
 
 Implemented in 08599a9: the "Every dispatched built-in command has a help entry" scenario in features/ticket_help.feature reads the last `case "${1:-help}" in` block of ticket (17 commands; help aliases skipped). super is excluded: it is a prefix consumed before dispatch, and `tk super --help` prints the full help. Red check: deleting the `show <id>` help line failed the scenario with "show: exit 1 ... no .tickets directory found"; the line was restored, not committed. Verification: make test 213 scenarios pass.
+
+**2026-10-17T22:45:47Z**
+
+Review follow-up in cc0a119: the dispatch parser now accepts quoted ("show")) and space-separated (a | b)) arms and fails on any other line at arm indentation. Checked on scratch copies with the show help line deleted: the quoted and spaced arms fail naming show, and a show*) arm fails with "Cannot parse dispatch arm". Verification: make test 213 scenarios pass; git diff --check clean.
