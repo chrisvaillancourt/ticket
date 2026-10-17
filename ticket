@@ -1593,15 +1593,9 @@ _list_plugins() {
     done
 }
 
-cmd_help() {
-    local cmd
-    cmd=$(basename "$0")
-    cat << EOF
-$cmd - minimal ticket system with dependency tracking
-
-Usage: $cmd <command> [args]
-
-Commands:
+# Command reference shared by full help and per-command help
+_help_commands() {
+    cat << 'EOF'
   create [title] [options] Create ticket, prints ID
     -d, --description      Description text
     --description-file     Read description from a file (- for stdin)
@@ -1638,6 +1632,28 @@ Commands:
   add-note <id> [text]     Append timestamped note (or pipe via stdin)
   super <cmd> [args]       Bypass plugins, run built-in command directly
 EOF
+}
+
+# Print the help entries for one built-in command; fails if none match
+_command_help() {
+    _help_commands | awk -v cmd="$1" '
+        /^  [^ ]/ { show = ($1 == cmd) }
+        show { sub(/^  /, ""); print; found = 1 }
+        END { exit !found }
+    '
+}
+
+cmd_help() {
+    local cmd
+    cmd=$(basename "$0")
+    cat << EOF
+$cmd - minimal ticket system with dependency tracking
+
+Usage: $cmd <command> [args]
+
+Commands:
+EOF
+    _help_commands
 
     # List installed plugins
     local plugins
@@ -1657,6 +1673,7 @@ env vars; use '\$TK_SCRIPT super <cmd>' to call built-ins.
 
 Plugin descriptions: comment '# tk-plugin: text' or --tk-describe flag
 
+Run '$cmd <command> --help' for one command's options.
 Tickets stored as markdown files in .tickets/
 Supports partial ID matching (e.g., '$cmd show 5c4' matches 'nw-5c46')
 EOF
@@ -1693,6 +1710,16 @@ if [[ $_tk_super -eq 0 && -n "${1:-}" && "${1:-}" != "help" && "${1:-}" != "--he
             export TK_SCRIPT="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
             shift
             exec "$_plugin" "$@"
+        fi
+    done
+fi
+
+# Per-command help: '<cmd> --help' or '<cmd> -h' anywhere in its arguments
+if [[ -n "${1:-}" ]]; then
+    for _arg in "${@:2}"; do
+        if [[ "$_arg" == "--help" || "$_arg" == "-h" ]]; then
+            _command_help "$1" && exit 0
+            break
         fi
     done
 fi

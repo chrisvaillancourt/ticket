@@ -18,6 +18,7 @@
 ### Added
 - `create --description-file`, `--design-file`, and `--acceptance-file` read rich-text fields from a file, or stdin with `-`
 - `create --dry-run` prints the rendered ticket without writing it or creating `.tickets/`
+- `<command> --help` and `-h` print help for one built-in command without needing or creating `.tickets/`
 - Orthogonal deferred-work metadata and `defer`, `undefer`, and `deferred` commands with UTC eligibility dates
 - Reversible checkout-local installer for core, curated plugins, and aliases
 - Plugin system: executables named `tk-<cmd>` or `ticket-<cmd>` in PATH are invoked automatically
