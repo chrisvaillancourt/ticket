@@ -14,6 +14,15 @@ nw-5c46: add SSE connection management
 
 VS Code allows you to Ctrl+Click or Cmd+Click the ID and jump directly to the file to read the details.
 
+## Fork status
+
+This is a personal fork of [`wedow/ticket`](https://github.com/wedow/ticket).
+It adds deferred work, file and stdin input for `create`, `create --dry-run`,
+per-command `--help`, and fixes to ticket writing and `link` reporting (see
+[CHANGELOG.md](CHANGELOG.md)). Upstream integration is deferred until upstream
+is active again; the trigger, candidate changes, and the fork's design
+decisions are in [docs/fork-maintenance.md](docs/fork-maintenance.md).
+
 ## Local checkout
 
 Clone this repository and record the exact commit you are installing:
@@ -124,7 +133,8 @@ available on macOS and Linux. The `query` and `migrate-beads` plugins require
 `grep`.
 
 Repository maintenance follows the documented
-[GitHub Actions and branch policy](docs/github-actions-policy.md).
+[GitHub Actions and branch policy](docs/github-actions-policy.md) and
+[fork maintenance decisions](docs/fork-maintenance.md).
 
 ## Agent Setup
 

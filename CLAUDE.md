@@ -4,6 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 See @README.md for usage documentation. Run `tk help` for command reference. Always update the README.md usage content when adding/changing commands and flags.
 
+This is a fork of `wedow/ticket`. Read `docs/fork-maintenance.md` before proposing upstream changes or changing deferral, `link`, `create` input, or help behavior; record new fork decisions there.
+
 ## Architecture
 
 **Core script:** Single-file bash implementation (`ticket`, ~1000 lines). Uses awk for performant bulk operations on large ticket sets.
