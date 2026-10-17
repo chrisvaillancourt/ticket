@@ -2,7 +2,7 @@
 id: tic-hcn2
 status: closed
 deps: []
-links: []
+links: [tic-yt78]
 created: 2026-10-17T22:40:46Z
 type: bug
 priority: 2
@@ -33,3 +33,7 @@ Every writer emits `deps: []` and `links: []`, so this only affects hand-written
 **2026-10-17T22:41:03Z**
 
 Fixed in 18b7d0c: awk insert_yaml_field() replaces the GNU-only sed insert and errors when a ticket has no frontmatter; dep/undep treat a missing deps field as empty; link adds a missing links field before merging. Verification: 7 new Behave scenarios fail against the previous script on macOS (BSD sed) and pass after; make test 213 scenarios pass; bash -n and git diff --check clean; manual status/dep/link check writes the fields on macOS and in debian:stable-slim (GNU sed 4.9, mawk).
+
+**2026-10-17T23:00:56Z**
+
+Review follow-up: insertion after a body --- rule, the dep body-line overwrite, link writing before validation, and the generic no-frontmatter message are fixed under tic-yt78 (8a9f951).
