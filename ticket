@@ -930,7 +930,9 @@ cmd_dep() {
     dep_file=$(ticket_path "$dep_id") || return 1
     dep_id=$(basename "$dep_file" .md)
 
-    # Get current deps (a missing or empty field counts as [])
+    # Get current deps (a missing or empty field counts as []); check first so
+    # a malformed ticket reports why instead of being read as having no deps
+    check_frontmatter "$file" || return 1
     local current_deps
     current_deps=$(yaml_field "$file" "deps" || true)
 
@@ -1295,6 +1297,8 @@ cmd_undep() {
     dep_file=$(ticket_path "$dep_id") || return 1
     dep_id=$(basename "$dep_file" .md)
 
+    # Check first so a malformed ticket reports why, not "not found"
+    check_frontmatter "$file" || return 1
     local current_deps
     current_deps=$(yaml_field "$file" "deps" || true)
 
@@ -1384,6 +1388,11 @@ cmd_unlink() {
     local id target_id
     id=$(basename "$file" .md)
     target_id=$(basename "$target_file" .md)
+
+    # Check both tickets before reading or writing either, so a malformed
+    # one reports why and nothing is half-unlinked
+    check_frontmatter "$file" || return 1
+    check_frontmatter "$target_file" || return 1
 
     local current_links
     current_links=$(yaml_field "$file" "links" || true)

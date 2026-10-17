@@ -56,6 +56,25 @@ Feature: Ticket Dependencies
     And the output should be "Dependency not found"
     And ticket "task-0001" should be unchanged
 
+  Scenario: Undep reports a CRLF ticket instead of a missing dependency
+    Given ticket "task-0001" depends on "task-0002"
+    And ticket "task-0001" uses CRLF line endings
+    And I remember the content of ticket "task-0001"
+    When I run "ticket undep task-0001 task-0002"
+    Then the command should fail
+    And the output should contain "CRLF line endings"
+    And the output should not contain "Dependency not found"
+    And ticket "task-0001" should be unchanged
+
+  Scenario: Dep reports a CRLF ticket instead of an existing dependency
+    Given ticket "task-0001" depends on "task-0002"
+    And ticket "task-0001" uses CRLF line endings
+    And I remember the content of ticket "task-0001"
+    When I run "ticket dep task-0001 task-0002"
+    Then the command should fail
+    And the output should contain "CRLF line endings"
+    And ticket "task-0001" should be unchanged
+
   Scenario: Add a dependency leaves a deps line in the body alone
     Given ticket "task-0001" has no field "deps"
     And ticket "task-0001" body ends with:

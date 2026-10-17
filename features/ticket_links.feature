@@ -111,6 +111,47 @@ Feature: Ticket Links
     And ticket "link-0001" should be unchanged
     And ticket "bare-0001" should be unchanged
 
+  Scenario: Unlink checks both tickets before writing either
+    Given ticket "link-0001" is linked to "link-0002"
+    And a file ".tickets/link-0002.md" containing:
+      """
+      ---
+      id: link-0002
+      status: open
+      links: [link-0001]
+      # Unclosed ticket
+      """
+    And I remember the content of ticket "link-0001"
+    And I remember the content of ticket "link-0002"
+    When I run "ticket unlink link-0001 link-0002"
+    Then the command should fail
+    And the output should contain "frontmatter is not closed"
+    And ticket "link-0001" should be unchanged
+    And ticket "link-0002" should be unchanged
+
+  Scenario: Unlink reports a CRLF target instead of claiming success
+    Given ticket "link-0001" is linked to "link-0002"
+    And ticket "link-0002" uses CRLF line endings
+    And I remember the content of ticket "link-0001"
+    And I remember the content of ticket "link-0002"
+    When I run "ticket unlink link-0001 link-0002"
+    Then the command should fail
+    And the output should contain "CRLF line endings"
+    And the output should not contain "Removed link"
+    And ticket "link-0001" should be unchanged
+    And ticket "link-0002" should be unchanged
+
+  Scenario: Unlink reports a CRLF source instead of a missing link
+    Given ticket "link-0001" is linked to "link-0002"
+    And ticket "link-0001" uses CRLF line endings
+    And I remember the content of ticket "link-0001"
+    And I remember the content of ticket "link-0002"
+    When I run "ticket unlink link-0001 link-0002"
+    Then the command should fail
+    And the output should contain "CRLF line endings"
+    And the output should not contain "Link not found"
+    And ticket "link-0002" should be unchanged
+
   Scenario: Link adds an ID that is a prefix of an existing link
     Given a ticket exists with ID "t-1" and title "Short ID"
     And a ticket exists with ID "t-10" and title "Long ID"

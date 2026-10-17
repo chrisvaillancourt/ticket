@@ -264,3 +264,17 @@ Feature: Deferred Work
     Then the command should succeed
     And ticket "defer-0001" should not have frontmatter field "deferred"
     And the body of ticket "defer-0001" should contain the line "deferred: true"
+
+  Scenario Outline: Deferral commands report a CRLF ticket without writing
+    Given a ticket exists with ID "defer-0001" and title "Needs input"
+    And ticket "defer-0001" uses CRLF line endings
+    And I remember the content of ticket "defer-0001"
+    When I run "ticket <command> defer-0001"
+    Then the command should fail
+    And the output should contain "CRLF line endings"
+    And ticket "defer-0001" should be unchanged
+
+    Examples:
+      | command |
+      | defer   |
+      | undefer |
