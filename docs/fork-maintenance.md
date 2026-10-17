@@ -43,6 +43,10 @@ fork-only automation.
 | `create --description-file/--design-file/--acceptance-file` and `--dry-run` | `f8bdb67`, `88c69a3` | [PR #55](https://github.com/wedow/ticket/pull/55) adds `-d -` for stdin |
 | `<command> --help` and `-h` | `0884cff`, `88c69a3` | none found |
 | Plugins report a missing `.tickets` directory instead of `TICKETS_DIR: unbound variable` | `b4e8c3f` | none found |
+| Frontmatter fields: portable insertion of missing fields (BSD sed silently skipped it) | `70c896c` | [PR #59](https://github.com/wedow/ticket/pull/59) moves the insert to awk |
+| Frontmatter scoped to the opening block, so body lines such as `status: …` or `---` rules are never read or rewritten | `8a9f951` | none found |
+| Exact ID matching in `dep`, `undep`, `unlink`, and `link` (`t-1` no longer matches `t-10`; `undep` no longer corrupts lists) | `d80a79c` | none found |
+| `closed` no longer exits 141 on large ticket lists | `2a9c38d` | none found |
 | Deferred work (`defer`, `undefer`, `deferred`) | `5c0b92b`, `ebc359e` | [issue #39](https://github.com/wedow/ticket/issues/39), [PR #50](https://github.com/wedow/ticket/pull/50) (`pending` status) |
 
 Deferral is the most opinionated of these. Offer it as a design proposal on
