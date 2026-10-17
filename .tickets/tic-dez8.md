@@ -1,6 +1,6 @@
 ---
 id: tic-dez8
-status: open
+status: closed
 deps: []
 links: []
 created: 2026-10-17T22:38:35Z
@@ -16,3 +16,9 @@ Per-command help comes from _command_help, which filters the shared _help_comman
 ## Acceptance Criteria
 
 A Behave scenario derives the built-in command list from the script's dispatch case, not a hand-kept list, and asserts that `ticket <cmd> --help` exits 0 and prints that command's entry for each one. Deleting any command's help line makes the scenario fail and name that command.
+
+## Notes
+
+**2026-10-17T22:40:27Z**
+
+Implemented in 08599a9: the "Every dispatched built-in command has a help entry" scenario in features/ticket_help.feature reads the last `case "${1:-help}" in` block of ticket (17 commands; help aliases skipped). super is excluded: it is a prefix consumed before dispatch, and `tk super --help` prints the full help. Red check: deleting the `show <id>` help line failed the scenario with "show: exit 1 ... no .tickets directory found"; the line was restored, not committed. Verification: make test 213 scenarios pass.
