@@ -21,6 +21,21 @@ Feature: Ticket Dependencies
     Then the command should succeed
     And the output should be "Dependency already exists"
 
+  Scenario: Add a dependency to a ticket without a deps field
+    Given ticket "task-0001" has no field "deps"
+    When I run "ticket dep task-0001 task-0002"
+    Then the command should succeed
+    And the output should be "Added dependency: task-0001 -> task-0002"
+    And ticket "task-0001" should have frontmatter field "deps" with value "[task-0002]"
+    And ticket "task-0001" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Add a second dependency after inserting the deps field
+    Given ticket "task-0001" has no field "deps"
+    When I run "ticket dep task-0001 task-0002"
+    And I run "ticket dep task-0001 task-0003"
+    Then the command should succeed
+    And ticket "task-0001" should have frontmatter field "deps" with value "[task-0002, task-0003]"
+
   Scenario: Remove a dependency
     Given ticket "task-0001" depends on "task-0002"
     When I run "ticket undep task-0001 task-0002"
@@ -32,6 +47,14 @@ Feature: Ticket Dependencies
     When I run "ticket undep task-0001 task-0002"
     Then the command should fail
     And the output should be "Dependency not found"
+
+  Scenario: Remove a dependency from a ticket without a deps field
+    Given ticket "task-0001" has no field "deps"
+    And I remember the content of ticket "task-0001"
+    When I run "ticket undep task-0001 task-0002"
+    Then the command should fail
+    And the output should be "Dependency not found"
+    And ticket "task-0001" should be unchanged
 
   Scenario: Add dependency with non-existent ticket
     When I run "ticket dep task-0001 nonexistent"

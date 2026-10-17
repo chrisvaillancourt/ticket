@@ -60,3 +60,25 @@ Feature: Ticket Status Management
     When I run "ticket status 0001 in_progress"
     Then the command should succeed
     And ticket "test-0001" should have field "status" with value "in_progress"
+
+  Scenario: Set status on a ticket without a status field
+    Given ticket "test-0001" has no field "status"
+    When I run "ticket status test-0001 closed"
+    Then the command should succeed
+    And the output should be "Updated test-0001 -> closed"
+    And ticket "test-0001" should have frontmatter field "status" with value "closed"
+    And ticket "test-0001" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Set status on a ticket without frontmatter fails
+    Given a file ".tickets/bare-0001.md" containing:
+      """
+      # Bare ticket
+
+      No frontmatter here.
+      """
+    And I remember the content of ticket "bare-0001"
+    When I run "ticket status bare-0001 closed"
+    Then the command should fail
+    And the output should contain "no YAML frontmatter"
+    And the output should not contain "Updated"
+    And ticket "bare-0001" should be unchanged

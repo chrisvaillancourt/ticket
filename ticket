@@ -157,10 +157,33 @@ update_yaml_field() {
     if _grep -q "^${field}:" "$file"; then
         _sed_i "$file" "s/^${field}:.*/${field}: ${value}/"
     else
-        # Insert after first --- (beginning of frontmatter)
-        _sed_i "$file" "0,/^---$/ { /^---$/a\\
-${field}: ${value}
-}"
+        insert_yaml_field "$file" "$field" "$value"
+    fi
+}
+
+# Insert a frontmatter field right after the opening ---. Uses awk because
+# BSD sed silently ignores GNU's "0,/re/" address and appends nothing.
+insert_yaml_field() {
+    local file="$1"
+    local field="$2"
+    local value="$3"
+
+    local tmp="${file}.tmp.$$"
+    if YAML_INSERT_LINE="${field}: ${value}" awk '
+    !inserted && $0 == "---" {
+        print
+        print ENVIRON["YAML_INSERT_LINE"]
+        inserted = 1
+        next
+    }
+    { print }
+    END { if (!inserted) exit 1 }
+    ' "$file" > "$tmp"; then
+        mv "$tmp" "$file"
+    else
+        rm -f "$tmp"
+        echo "Error: cannot add '$field' to $file: no YAML frontmatter" >&2
+        return 1
     fi
 }
 
@@ -876,9 +899,9 @@ cmd_dep() {
     dep_file=$(ticket_path "$dep_id") || return 1
     dep_id=$(basename "$dep_file" .md)
 
-    # Get current deps
+    # Get current deps (a missing or empty field counts as [])
     local current_deps
-    current_deps=$(yaml_field "$file" "deps")
+    current_deps=$(yaml_field "$file" "deps" || true)
 
     # Add dep if not already present
     if echo "$current_deps" | _grep -q "$dep_id"; then
@@ -887,7 +910,7 @@ cmd_dep() {
     fi
 
     # Update deps array
-    if [[ "$current_deps" == "[]" ]]; then
+    if [[ -z "$current_deps" || "$current_deps" == "[]" ]]; then
         update_yaml_field "$file" "deps" "[$dep_id]"
     else
         local new_deps
@@ -1244,7 +1267,7 @@ cmd_undep() {
     dep_id=$(basename "$dep_file" .md)
 
     local current_deps
-    current_deps=$(yaml_field "$file" "deps")
+    current_deps=$(yaml_field "$file" "deps" || true)
 
     if ! echo "$current_deps" | _grep -q "$dep_id"; then
         echo "Dependency not found"
@@ -1281,6 +1304,11 @@ cmd_link() {
         done
         ids+=("$id")
         files+=("$file")
+    done
+
+    # Give tickets without a links field an empty one for awk to fill in
+    for file in "${files[@]}"; do
+        _grep -q '^links:' "$file" || insert_yaml_field "$file" "links" "[]" || return 1
     done
 
     # Use awk to update all files in one pass per file, recording the IDs

@@ -15,6 +15,7 @@
 - `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
+- `status`, `dep`, and `link` now add a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, `link` records and reports links on tickets with no `links` field, and a ticket with no frontmatter now fails with an error
 
 ### Added
 - `create --description-file`, `--design-file`, and `--acceptance-file` read rich-text fields from a file, or stdin with `-`

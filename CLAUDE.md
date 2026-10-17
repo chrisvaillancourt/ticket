@@ -13,7 +13,7 @@ This is a fork of `wedow/ticket`. Read `docs/fork-maintenance.md` before proposi
 Key functions:
 - `generate_id()` - Creates IDs from directory name prefix + random suffix
 - `ticket_path()` - Resolves partial IDs to full file paths
-- `yaml_field()` / `update_yaml_field()` - YAML frontmatter manipulation via sed
+- `yaml_field()` / `update_yaml_field()` - YAML frontmatter manipulation via sed; missing fields are inserted with awk (`insert_yaml_field()`) because BSD sed lacks GNU's `0,/re/` address
 - `cmd_*()` - Command handlers
 - `cmd_ready()`, `cmd_blocked()`, `cmd_ls()` - awk-based bulk listing with sorting
 

@@ -86,6 +86,25 @@ def set_ticket_field(context, ticket_id, field, value):
     ticket_path.write_text(content)
 
 
+def remove_ticket_field(context, ticket_id, field):
+    """Delete a frontmatter field line from a fixture ticket."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    pattern = rf'^{re.escape(field)}:.*\n'
+    assert re.search(pattern, content, re.MULTILINE), \
+        f"Field '{field}' not found in fixture ticket\nContent: {content}"
+    content = re.sub(pattern, '', content, count=1, flags=re.MULTILINE)
+    ticket_path.write_text(content)
+
+
+def frontmatter_lines(content):
+    """Return the lines between the opening and closing frontmatter delimiters."""
+    lines = content.split('\n')
+    assert lines and lines[0] == '---', f"Ticket has no opening frontmatter delimiter\nContent: {content}"
+    assert '---' in lines[1:], f"Ticket has no closing frontmatter delimiter\nContent: {content}"
+    return lines[1:lines.index('---', 1)]
+
+
 def encode_yaml_single_quoted_scalar(value):
     """Encode one-line text as the YAML single-quoted subset used by tickets."""
     return "'" + value.replace("'", "''") + "'"
@@ -201,6 +220,12 @@ def step_ticket_has_status(context, ticket_id, status):
 def step_ticket_fixture_has_field(context, ticket_id, field, value):
     """Set an arbitrary frontmatter field on a fixture ticket."""
     set_ticket_field(context, ticket_id, field, value)
+
+
+@given(r'ticket "(?P<ticket_id>[^"]+)" has no field "(?P<field>[^"]+)"')
+def step_ticket_fixture_lacks_field(context, ticket_id, field):
+    """Remove a frontmatter field, as in a hand-written or external ticket."""
+    remove_ticket_field(context, ticket_id, field)
 
 
 @given(r'ticket "(?P<ticket_id>[^"]+)" has defer_until set to today in UTC')
@@ -750,6 +775,19 @@ def step_ticket_has_field_value(context, ticket_id, field, value):
     match = re.search(pattern, content, re.MULTILINE)
     assert match, f"Field '{field}' not found in ticket\nContent: {content}"
     actual = match.group(1).strip()
+    assert actual == value, f"Field '{field}' has value '{actual}', expected '{value}'"
+
+
+@then(r'ticket "(?P<ticket_id>[^"]+)" should have frontmatter field "(?P<field>[^"]+)" with value "(?P<value>[^"]+)"')
+def step_ticket_has_frontmatter_field_value(context, ticket_id, field, value):
+    """Assert a field appears exactly once, inside the frontmatter, with a value."""
+    ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
+    content = ticket_path.read_text()
+    prefix = f'{field}:'
+    matches = [line for line in frontmatter_lines(content) if line.startswith(prefix)]
+    assert len(matches) == 1, \
+        f"Expected one '{field}' line in frontmatter, found {len(matches)}\nContent: {content}"
+    actual = matches[0][len(prefix):].strip()
     assert actual == value, f"Field '{field}' has value '{actual}', expected '{value}'"
 
 

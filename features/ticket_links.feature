@@ -72,3 +72,21 @@ Feature: Ticket Links
     And the output should contain "Error: duplicate ticket 'link-0001'"
     And ticket "link-0001" should not have "link-0001" in links
     And ticket "link-0001" should not have "link-0002" in links
+
+  Scenario: Link adds a missing links field
+    Given ticket "link-0001" has no field "links"
+    When I run "ticket link link-0001 link-0002"
+    Then the command should succeed
+    And the output should be "Added link: link-0001 <-> link-0002"
+    And ticket "link-0001" should have frontmatter field "links" with value "[link-0002]"
+    And ticket "link-0002" should have frontmatter field "links" with value "[link-0001]"
+    And ticket "link-0001" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Link reports pairs when no ticket has a links field
+    Given ticket "link-0001" has no field "links"
+    And ticket "link-0002" has no field "links"
+    When I run "ticket link link-0001 link-0002"
+    Then the command should succeed
+    And the output should be "Added link: link-0001 <-> link-0002"
+    And ticket "link-0001" should have frontmatter field "links" with value "[link-0002]"
+    And ticket "link-0002" should have frontmatter field "links" with value "[link-0001]"
