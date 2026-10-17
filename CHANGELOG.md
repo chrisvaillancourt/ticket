@@ -30,11 +30,14 @@
 
 ### Plugins
 - ticket-edit 1.0.0: Open ticket in $EDITOR (extracted from core)
+- ticket-edit 1.0.1: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
 - ticket-ls 1.0.0: List tickets with optional filters (extracted from core); `ticket-list` symlink for alias
 - ticket-ls 1.1.0: Display stored deferral metadata, including elapsed dates
 - ticket-ls 1.1.1: Decode single-quoted deferral reasons for display
+- ticket-ls 1.1.2: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
 - ticket-query 1.0.0: Output tickets as JSON, optionally filtered with jq (extracted from core)
 - ticket-query 1.1.0: Emit valid JSON for punctuation and decode single-quoted scalar values
+- ticket-query 1.1.1: Report a missing `.tickets` directory instead of failing with `TICKETS_DIR: unbound variable`
 - ticket-migrate-beads 1.0.1: Import tickets from .beads/issues.jsonl with normalized trailing whitespace (extracted from core)
 
 ## [0.3.2] - 2026-02-03

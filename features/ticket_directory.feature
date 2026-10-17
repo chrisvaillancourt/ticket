@@ -47,6 +47,27 @@ Feature: Ticket Directory Resolution
     Then the command should fail
     And the output should contain "no .tickets directory found"
 
+  Scenario Outline: Error when no tickets directory for plugin command
+    Given the tickets directory does not exist
+    And I am in subdirectory "orphan"
+    When I run "ticket <command>"
+    Then the command should fail
+    And the output should contain "Error: no .tickets directory found (searched parent directories)"
+    And the output should contain "Run 'tk create' to initialize, or set TICKETS_DIR env var"
+    And the output should not contain "unbound variable"
+
+    Examples:
+      | command        |
+      | ls             |
+      | list           |
+      | edit test-0001 |
+      | query          |
+
+  Scenario: Error when TICKETS_DIR points at a missing directory for plugin command
+    When I run "ticket ls" with TICKETS_DIR set to "missing-tickets"
+    Then the command should fail
+    And the output should contain "missing-tickets' does not exist"
+
   Scenario: TICKETS_DIR env var takes priority over parent walking
     Given a ticket exists with ID "parent-0001" and title "Parent ticket"
     And a separate tickets directory exists at "other-tickets" with ticket "other-0001" titled "Other ticket"

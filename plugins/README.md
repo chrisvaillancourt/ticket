@@ -20,8 +20,18 @@ set -euo pipefail
 ## Environment Variables
 
 Plugins receive:
-- `TICKETS_DIR` — absolute path to `.tickets/` directory
+- `TICKETS_DIR` — path to the `.tickets/` directory, or unset when none is found
 - `TK_SCRIPT` — absolute path to the `tk` script
+
+A plugin that reads tickets should fail clearly when `TICKETS_DIR` is unset, with the same message as the core:
+
+```bash
+if [[ -z "${TICKETS_DIR:-}" ]]; then
+    echo "Error: no .tickets directory found (searched parent directories)" >&2
+    echo "Run 'tk create' to initialize, or set TICKETS_DIR env var" >&2
+    exit 1
+fi
+```
 
 Use `$TK_SCRIPT super <cmd>` to call built-ins without recursing into plugins:
 

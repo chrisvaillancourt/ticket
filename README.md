@@ -285,7 +285,7 @@ tk help         # lists it under "Plugins"
 - Binaries: `--tk-describe` flag outputs `tk-plugin: description`
 
 **Plugin environment variables:**
-- `TICKETS_DIR` - path to the .tickets directory (may be empty)
+- `TICKETS_DIR` - path to the .tickets directory (unset when none is found; plugins that read tickets should check it)
 - `TK_SCRIPT` - absolute path to the tk script
 
 **Calling built-ins from plugins:**

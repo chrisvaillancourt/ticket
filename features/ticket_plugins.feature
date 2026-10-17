@@ -95,6 +95,17 @@ Feature: Plugin System
     And ticket "beads-min" should have field "created" with value "2026-07-16T10:00:00Z"
     And ticket "beads-min" should end with exactly one newline and have no trailing whitespace
 
+  Scenario: Migrate creates the tickets directory when none exists
+    Given the tickets directory does not exist
+    And a Beads issues file containing:
+      """
+      {"id":"beads-init","title":"First import","created_at":"2026-07-16T10:00:00Z"}
+      """
+    When I run "ticket migrate-beads"
+    Then the command should succeed
+    And the tickets directory should exist
+    And ticket "beads-init" should have field "status" with value "open"
+
   Scenario: Migrate a fully populated Beads record
     Given a clean tickets directory
     And a Beads issues file containing:
