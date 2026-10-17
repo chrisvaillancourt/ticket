@@ -65,3 +65,10 @@ Feature: Ticket Links
       Added link: link-0001 <-> link-0003
       Added link: link-0002 <-> link-0003
       """
+
+  Scenario: Duplicate IDs are rejected
+    When I run "ticket link link-0001 link-0001 link-0002"
+    Then the command should fail
+    And the output should contain "Error: duplicate ticket 'link-0001'"
+    And ticket "link-0001" should not have "link-0001" in links
+    And ticket "link-0001" should not have "link-0002" in links

@@ -10,6 +10,7 @@
 - Inherited GitHub Release workflow and upstream-specific Homebrew/AUR publishing assets
 
 ### Fixed
+- `link` rejects duplicate IDs instead of linking a ticket to itself
 - Deferral reasons now use valid YAML single-quoted scalars and round-trip punctuation through all readers
 - `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF

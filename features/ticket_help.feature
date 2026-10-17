@@ -58,3 +58,10 @@ Feature: Command Help
     When I run "ticket frobnicate --help"
     Then the command should fail
     And the output should contain "Unknown command: frobnicate"
+
+  Scenario: Help flags in free text are data
+    Given a clean tickets directory
+    And a ticket exists with ID "help-0001" and title "Notes"
+    When I run "ticket add-note help-0001 -h"
+    Then the command should succeed
+    And the output should contain "Note added to help-0001"

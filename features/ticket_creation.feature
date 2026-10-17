@@ -217,3 +217,35 @@ Feature: Ticket Creation
     Then the command should fail
     And the output should contain "Error: ticket 'nope' not found"
     And no ticket files should exist
+
+  Scenario: Field files can be non-regular readable paths
+    When I run "printf 'Via dev stdin\n' | ticket create 'Dev stdin' --description-file /dev/stdin"
+    Then the command should succeed
+    And the created ticket body should be:
+      """
+      # Dev stdin
+
+      Via dev stdin
+      """
+
+  Scenario: Field file option requires a path
+    Given the tickets directory does not exist
+    When I run "ticket create 'No path' --description-file"
+    Then the command should fail
+    And the output should contain "Error: --description-file requires a path"
+    And the tickets directory should not exist
+
+  Scenario: Option values that look like help flags are data
+    When I run "ticket create 'Literal' -d --help"
+    Then the command should succeed
+    And the created ticket body should be:
+      """
+      # Literal
+
+      --help
+      """
+
+  Scenario: Dry run output appends to redirected output
+    When I run "printf 'header\n' > out.txt && ticket create 'Preview' --dry-run >> out.txt"
+    Then the command should succeed
+    And the file "out.txt" should start with "header\n---\nid: "

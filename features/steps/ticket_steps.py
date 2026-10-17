@@ -650,6 +650,14 @@ def step_no_ticket_files(context):
     assert not files, f"Unexpected ticket files: {files}"
 
 
+@then(r'the file "(?P<path>[^"]+)" should start with "(?P<prefix>[^"]+)"')
+def step_file_starts_with(context, path, prefix):
+    """Assert a test file starts with text (\\n in the step means LF)."""
+    prefix = prefix.replace('\\n', '\n')
+    content = (Path(context.test_dir) / path).read_text()
+    assert content.startswith(prefix), f"File starts with {content[:40]!r}, expected {prefix!r}"
+
+
 @then(r'the raw output should end with exactly one newline')
 def step_raw_output_one_newline(context):
     """Assert unstripped stdout ends in exactly one LF."""
