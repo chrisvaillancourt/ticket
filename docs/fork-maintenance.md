@@ -42,6 +42,7 @@ fork-only automation.
 | `link` reports each new pair and rejects duplicate IDs | `186bef8`, `88c69a3` | none found |
 | `create --description-file/--design-file/--acceptance-file` and `--dry-run` | `f8bdb67`, `88c69a3` | [PR #55](https://github.com/wedow/ticket/pull/55) adds `-d -` for stdin |
 | `<command> --help` and `-h` | `0884cff`, `88c69a3` | none found |
+| Plugins report a missing `.tickets` directory instead of `TICKETS_DIR: unbound variable` | `b4e8c3f` | none found |
 | Deferred work (`defer`, `undefer`, `deferred`) | `5c0b92b`, `ebc359e` | [issue #39](https://github.com/wedow/ticket/issues/39), [PR #50](https://github.com/wedow/ticket/pull/50) (`pending` status) |
 
 Deferral is the most opinionated of these. Offer it as a design proposal on
