@@ -840,6 +840,62 @@ def step_output_line_count(context, count):
         f"Expected {count} lines but got {len(lines)}\nOutput: {context.stdout}"
 
 
+def dispatched_builtin_commands(script_path):
+    """Return the command names in the script's built-in dispatch case.
+
+    The built-in dispatch is the last 'case "${1:-help}" in' block. Each arm
+    looks like 'name) ...' or 'a|b) ...'; the catch-all '*)' and the help
+    aliases are skipped.
+    """
+    lines = Path(script_path).read_text().splitlines()
+    starts = [i for i, line in enumerate(lines)
+              if line.strip() == 'case "${1:-help}" in']
+    assert starts, f"No 'case \"${{1:-help}}\" in' block found in {script_path}"
+    commands = []
+    for line in lines[starts[-1] + 1:]:
+        if line.strip() == 'esac':
+            break
+        arm = re.match(r'\s*([A-Za-z0-9_|-]+)\)', line)
+        if arm:
+            commands.extend(name for name in arm.group(1).split('|')
+                            if name not in ('help', '--help', '-h'))
+    assert 'create' in commands and 'add-note' in commands, \
+        f"Dispatch parsing looks wrong; found: {commands}"
+    return commands
+
+
+@when(r'I request help for every dispatched built-in command')
+def step_run_help_for_every_builtin(context):
+    """Run '<cmd> --help' for each command in the built-in dispatch case."""
+    ticket_script = get_ticket_script(context)
+    context.help_results = {}
+    for command in dispatched_builtin_commands(ticket_script):
+        result = subprocess.run(
+            [ticket_script, command, '--help'],
+            cwd=context.test_dir,
+            capture_output=True,
+            text=True,
+            stdin=subprocess.DEVNULL,
+        )
+        context.help_results[command] = result
+
+
+@then(r'each command should print its own help entry')
+def step_each_command_prints_help(context):
+    """Assert every dispatched command exited 0 with its help entry first."""
+    failures = []
+    for command, result in context.help_results.items():
+        first_line = result.stdout.split('\n', 1)[0]
+        first_word = first_line.split()[0] if first_line.split() else ''
+        if result.returncode != 0 or first_word != command:
+            failures.append(
+                f"{command}: exit {result.returncode}, first line {first_line!r}, "
+                f"stderr {result.stderr.strip()!r}"
+            )
+    assert not failures, \
+        "Built-in commands without a working --help entry:\n" + '\n'.join(failures)
+
+
 @then(r'the output should be valid JSONL')
 def step_output_valid_jsonl(context):
     """Assert output is valid JSON Lines format."""

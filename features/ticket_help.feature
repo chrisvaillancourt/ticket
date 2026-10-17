@@ -33,6 +33,14 @@ Feature: Command Help
       | show     | --help | <id>                    |
       | add-note | --help | <id> [text]             |
 
+  # Guard: the command list comes from the script's dispatch case, so a new
+  # built-in without a help line fails here instead of running on --help.
+  # 'super' is a prefix handled before dispatch, not a dispatched command.
+  Scenario: Every dispatched built-in command has a help entry
+    When I request help for every dispatched built-in command
+    Then each command should print its own help entry
+    And the tickets directory should not exist
+
   Scenario: Command help lists the command's options
     When I run "ticket create --help"
     Then the command should succeed
