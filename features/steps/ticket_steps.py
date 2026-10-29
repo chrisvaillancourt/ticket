@@ -556,8 +556,8 @@ def step_defer_with_punctuation_reason(context, ticket_id):
 
 @when(r'I add a note to ticket "(?P<ticket_id>[^"]+)" (?P<source>with argument|from stdin) "(?P<text>[^"]*)"')
 def step_add_note_literal(context, ticket_id, source, text):
-    """Add a note through argv or stdin without shell quoting (\\n in the step means LF)."""
-    text = text.replace('\\n', '\n')
+    """Add a note through argv or stdin without shell quoting (\\n and \\r in the step mean LF and CR)."""
+    text = text.replace('\\n', '\n').replace('\\r', '\r')
     args = [get_ticket_script(context), 'add-note', ticket_id]
     if source == 'with argument':
         args.append(text)
@@ -794,9 +794,10 @@ def step_ticket_has_normalized_whitespace(context, ticket_id):
 
 @then(r'the last note in ticket "(?P<ticket_id>[^"]+)" should be "(?P<text>[^"]*)"')
 def step_last_note_is(context, ticket_id, text):
-    """Assert the exact bytes after the last note timestamp (\\n in the step means LF)."""
-    text = text.replace('\\n', '\n')
-    content = (Path(context.test_dir) / '.tickets' / f'{ticket_id}.md').read_text()
+    """Assert the exact bytes after the last note timestamp (\\n and \\r in the step mean LF and CR)."""
+    text = text.replace('\\n', '\n').replace('\\r', '\r')
+    # Bytes, not read_text(), so universal newlines can't turn CRLF into LF
+    content = (Path(context.test_dir) / '.tickets' / f'{ticket_id}.md').read_bytes().decode()
     stamps = list(re.finditer(r'^\*\*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\*\*\n', content, re.MULTILINE))
     assert stamps, f"No note timestamp found\nContent: {content}"
     expected = f'\n{text}\n' if text else ''

@@ -79,6 +79,14 @@ _strip_trailing_newlines() {
     printf '%s' "$value"
 }
 
+# Read files (or stdin with no arguments) without terminal line breaks.
+# $(cat) alone stops stripping at a CR, stranding it.
+_read_stripped() {
+    local content
+    content=$(cat -- "$@" && printf x) || return 1
+    _strip_trailing_newlines "${content%x}"
+}
+
 # Generate ticket ID from directory name + random string
 generate_id() {
     local dir_name
@@ -424,12 +432,12 @@ cmd_create() {
                 return 1
             fi
             stdin_field="$field"
-            content=$(cat)
+            content=$(_read_stripped)
             if [[ -z "$content" ]]; then
                 echo "Error: --$field-file - read nothing from stdin" >&2
                 return 1
             fi
-        elif [[ -d "$path" ]] || ! content=$(cat -- "$path" 2>/dev/null); then
+        elif [[ -d "$path" ]] || ! content=$(_read_stripped "$path" 2>/dev/null); then
             echo "Error: cannot read $field file '$path'" >&2
             return 1
         fi
@@ -1651,7 +1659,7 @@ cmd_add_note() {
     if [[ $# -gt 0 ]]; then
         note="$*"
     elif [[ ! -t 0 ]]; then
-        note=$(cat)
+        note=$(_read_stripped)
     else
         echo "Error: no note provided" >&2
         return 1
