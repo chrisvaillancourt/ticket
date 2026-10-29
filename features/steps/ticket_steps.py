@@ -554,6 +554,28 @@ def step_defer_with_punctuation_reason(context, ticket_id):
     context.returncode = result.returncode
 
 
+@when(r'I add a note to ticket "(?P<ticket_id>[^"]+)" (?P<source>with argument|from stdin) "(?P<text>[^"]*)"')
+def step_add_note_literal(context, ticket_id, source, text):
+    """Add a note through argv or stdin without shell quoting (\\n in the step means LF)."""
+    text = text.replace('\\n', '\n')
+    args = [get_ticket_script(context), 'add-note', ticket_id]
+    if source == 'with argument':
+        args.append(text)
+    result = subprocess.run(
+        args,
+        cwd=getattr(context, 'working_dir', context.test_dir),
+        capture_output=True,
+        text=True,
+        input=text if source == 'from stdin' else None,
+        stdin=subprocess.DEVNULL if source == 'with argument' else None,
+        env=os.environ.copy()
+    )
+    context.result = result
+    context.stdout = result.stdout.strip()
+    context.stderr = result.stderr.strip()
+    context.returncode = result.returncode
+
+
 # ============================================================================
 # Then Steps
 # ============================================================================
@@ -770,6 +792,18 @@ def step_ticket_has_normalized_whitespace(context, ticket_id):
     assert_normalized_trailing_whitespace(ticket_path)
 
 
+@then(r'the last note in ticket "(?P<ticket_id>[^"]+)" should be "(?P<text>[^"]*)"')
+def step_last_note_is(context, ticket_id, text):
+    """Assert the exact bytes after the last note timestamp (\\n in the step means LF)."""
+    text = text.replace('\\n', '\n')
+    content = (Path(context.test_dir) / '.tickets' / f'{ticket_id}.md').read_text()
+    stamps = list(re.finditer(r'^\*\*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\*\*\n', content, re.MULTILINE))
+    assert stamps, f"No note timestamp found\nContent: {content}"
+    expected = f'\n{text}\n' if text else ''
+    actual = content[stamps[-1].end():]
+    assert actual == expected, f"Last note is {actual!r}, expected {expected!r}"
+
+
 @then(r'ticket "(?P<ticket_id>[^"]+)" should not have field "(?P<field>[^"]+)"')
 def step_ticket_does_not_have_field(context, ticket_id, field):
     """Assert a YAML frontmatter field is absent."""
@@ -900,10 +934,11 @@ def step_ticket_not_has_link(context, ticket_id, link_id):
 
 @then(r'ticket "(?P<ticket_id>[^"]+)" should contain "(?P<text>[^"]+)"')
 def step_ticket_contains(context, ticket_id, text):
-    """Assert ticket file contains text."""
+    """Assert ticket file contains text (\\n in the step means LF)."""
+    text = text.replace('\\n', '\n')
     ticket_path = Path(context.test_dir) / '.tickets' / f'{ticket_id}.md'
     content = ticket_path.read_text()
-    assert text in content, f"Ticket does not contain '{text}'\nContent: {content}"
+    assert text in content, f"Ticket does not contain {text!r}\nContent: {content}"
 
 
 @then(r'ticket "(?P<ticket_id>[^"]+)" should contain a timestamp in notes')

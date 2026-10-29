@@ -1656,15 +1656,21 @@ cmd_add_note() {
         echo "Error: no note provided" >&2
         return 1
     fi
+    note=$(_strip_trailing_newlines "$note")
 
     local timestamp
     timestamp=$(_iso_date)
 
-    # Add Notes section if missing, then append timestamped note
+    # Add Notes section if missing, then append timestamped note;
+    # an empty note is the timestamp line alone, so no blank line ends the file
     if ! grep -q '^## Notes' "$file"; then
         printf '\n## Notes\n' >> "$file"
     fi
-    printf '\n**%s**\n\n%s\n' "$timestamp" "$note" >> "$file"
+    if [[ -n "$note" ]]; then
+        printf '\n**%s**\n\n%s\n' "$timestamp" "$note" >> "$file"
+    else
+        printf '\n**%s**\n' "$timestamp" >> "$file"
+    fi
 
     echo "Note added to $(basename "$file" .md)"
 }
