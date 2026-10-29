@@ -38,7 +38,7 @@ fork-only automation.
 
 | Change | Fork commits | Upstream overlap |
 |---|---|---|
-| `create` writes exactly one final newline (also `ticket-migrate-beads`) | `f50f1dc` | none found |
+| `create` and `add-note` write exactly one final newline (also `ticket-migrate-beads`) | `f50f1dc`, `51023d1` | none found |
 | `link` reports each new pair and rejects duplicate IDs | `186bef8`, `88c69a3` | none found |
 | `create --description-file/--design-file/--acceptance-file` and `--dry-run` | `f8bdb67`, `88c69a3` | [PR #55](https://github.com/wedow/ticket/pull/55) adds `-d -` for stdin |
 | `<command> --help` and `-h` | `0884cff`, `88c69a3` | none found |

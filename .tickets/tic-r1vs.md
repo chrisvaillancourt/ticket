@@ -1,8 +1,8 @@
 ---
 id: tic-r1vs
-status: open
+status: closed
 deps: []
-links: [tic-oo4g]
+links: [tic-oo4g, tic-h7km]
 created: 2026-10-29T20:54:09Z
 type: bug
 priority: 2
@@ -80,3 +80,9 @@ Any ticket edited this way fails `git diff --check` and whitespace hooks. Downst
 - Non-empty note text is kept byte-for-byte apart from trailing newline normalization.
 - Behave regression scenarios in `features/ticket_notes.feature` cover these cases using the existing "should end with exactly one newline and have no trailing whitespace" step.
 - `make test` passes, and CHANGELOG.md records the fix under Fixed.
+
+## Notes
+
+**2026-10-29T23:11:58Z**
+
+Fixed in 51023d1: the note goes through _strip_trailing_newlines and an empty note writes only the timestamp line. Reviews: GPT-6.1 Sol (high, via omp) and a fresh Opus agent both said ship with no blockers. Deferred: CRLF on stdin (tic-h7km, shared with create). Left as is: whitespace-only notes such as 'note ' or two empty arguments, which are user content kept byte-for-byte.
