@@ -37,6 +37,58 @@ Feature: Ticket Notes
     And the output should be "Note added to note-0001"
     And ticket "note-0001" should contain "## Notes"
 
+  Scenario Outline: Note input never leaves a blank line at end of file
+    When I add a note to ticket "note-0001" <source> "<input>"
+    Then the command should succeed
+    And the output should be "Note added to note-0001"
+    And the last note in ticket "note-0001" should be "<note>"
+    And ticket "note-0001" should end with exactly one newline and have no trailing whitespace
+
+    Examples:
+      | source        | input          | note       |
+      | with argument | note           | note       |
+      | with argument | l1\nl2         | l1\nl2     |
+      | with argument | note\n         | note       |
+      | with argument | note\n\n       | note       |
+      | with argument | l1\nl2\n       | l1\nl2     |
+      | with argument | \n\nl1\n\nl2\n | \n\nl1\n\nl2 |
+      | with argument |                |            |
+      | with argument | \n\n           |            |
+      | from stdin    | note           | note       |
+      | from stdin    | note\n         | note       |
+      | from stdin    | l1\nl2\n\n     | l1\nl2     |
+      | from stdin    |                |            |
+      | from stdin    | \n\n           |            |
+
+  Scenario Outline: Note input never leaves a blank line when a notes section exists
+    Given ticket "note-0001" has a notes section
+    When I add a note to ticket "note-0001" <source> "<input>"
+    Then the command should succeed
+    And the last note in ticket "note-0001" should be "<note>"
+    And ticket "note-0001" should end with exactly one newline and have no trailing whitespace
+
+    Examples:
+      | source        | input  | note |
+      | with argument | note\n | note |
+      | with argument |        |      |
+      | from stdin    | note\n | note |
+      | from stdin    |        |      |
+
+  Scenario: Multiple arguments are joined into one note ending in one newline
+    When I run "ticket add-note note-0001 two words"
+    Then the command should succeed
+    And the last note in ticket "note-0001" should be "two words"
+    And ticket "note-0001" should end with exactly one newline and have no trailing whitespace
+
+  Scenario: Notes added after empty and trailing-newline notes stay separated
+    When I add a note to ticket "note-0001" with argument ""
+    And I add a note to ticket "note-0001" with argument "first\n"
+    And I add a note to ticket "note-0001" with argument "second"
+    Then the last note in ticket "note-0001" should be "second"
+    And ticket "note-0001" should contain "Z**\n\n**"
+    And ticket "note-0001" should contain "first\n\n**"
+    And ticket "note-0001" should end with exactly one newline and have no trailing whitespace
+
   Scenario: Add note to non-existent ticket
     When I run "ticket add-note nonexistent 'My note'"
     Then the command should fail

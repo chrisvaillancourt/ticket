@@ -2,7 +2,7 @@
 id: tic-oo4g
 status: closed
 deps: []
-links: []
+links: [tic-r1vs]
 created: 2026-07-16T19:48:41Z
 type: bug
 priority: 1
