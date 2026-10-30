@@ -15,6 +15,7 @@
 - `ticket-query` now JSON-escapes keys, scalar values, and array elements before filtering
 - `create` now writes ticket files with exactly one final newline and no blank line at EOF
 - `add-note` no longer leaves a blank line at the end of the ticket when the note is empty, newline-only, or ends with a newline; an empty note is still added as a timestamp-only entry
+- `create --description-file`, `--design-file`, and `--acceptance-file` (from a file or stdin) and `add-note` from stdin now remove trailing CRLF line breaks instead of leaving a `\r` that showed up as trailing whitespace or a blank line at EOF; CRLF-only stdin for a field file is reported as empty, and CRLF-only stdin for `add-note` adds a timestamp-only note
 - `ticket-migrate-beads` now normalizes section spacing, writes exactly one final newline, and omits `created` when the source timestamp is empty
 - `status` now adds a missing frontmatter field on macOS/BSD sed instead of reporting success without writing it; `dep` and `undep` treat a missing `deps` field as empty instead of exiting silently, and `link` adds a missing `links` field instead of reporting "All links already exist"
 - `closed` no longer exits 141 with no output when the ticket file list overflows a pipe buffer under `pipefail`

@@ -171,6 +171,41 @@ Feature: Ticket Creation
       """
     And the created ticket file should end with exactly one newline and have no trailing whitespace
 
+  Scenario: CRLF line endings at the end of stdin are removed
+    When I run "printf 'Line one\nLine two\r\n\r\n' | ticket create 'CRLF stdin' --description-file -"
+    Then the command should succeed
+    And the created ticket file should end with exactly one newline and have no trailing whitespace
+    And the created ticket body should be:
+      """
+      # CRLF stdin
+
+      Line one
+      Line two
+      """
+
+  Scenario: CRLF line endings at the end of field files are removed
+    When I run "printf 'Plan\r\n' > design.md && printf 'Check\r\n' > accept.md && ticket create 'CRLF files' --design-file design.md --acceptance-file accept.md"
+    Then the command should succeed
+    And the created ticket file should end with exactly one newline and have no trailing whitespace
+    And the created ticket body should be:
+      """
+      # CRLF files
+
+      ## Design
+
+      Plan
+
+      ## Acceptance Criteria
+
+      Check
+      """
+
+  Scenario: CRLF-only stdin for a field file fails without creating anything
+    When I run "printf '\r\n\r\n' | ticket create 'Empty' --description-file -"
+    Then the command should fail
+    And the output should contain "Error: --description-file - read nothing from stdin"
+    And no ticket files should exist
+
   Scenario: Missing field file fails without creating anything
     Given the tickets directory does not exist
     When I run "ticket create 'Missing' --description-file nope.md"

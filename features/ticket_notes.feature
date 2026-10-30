@@ -59,6 +59,15 @@ Feature: Ticket Notes
       | from stdin    | l1\nl2\n\n     | l1\nl2     |
       | from stdin    |                |            |
       | from stdin    | \n\n           |            |
+      | with argument | note\r\n       | note       |
+      | from stdin    | note\r\n       | note       |
+      | from stdin    | l1\nl2\r\n\r\n | l1\nl2     |
+      | from stdin    | \r\n\r\n       |            |
+
+  Scenario: CRLF inside stdin note text is kept
+    When I add a note to ticket "note-0001" from stdin "l1\r\nl2\r\n\r\n"
+    Then the command should succeed
+    And the last note in ticket "note-0001" should be "l1\r\nl2"
 
   Scenario Outline: Note input never leaves a blank line when a notes section exists
     Given ticket "note-0001" has a notes section

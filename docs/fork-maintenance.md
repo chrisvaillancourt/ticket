@@ -38,7 +38,7 @@ fork-only automation.
 
 | Change | Fork commits | Upstream overlap |
 |---|---|---|
-| `create` and `add-note` write exactly one final newline (also `ticket-migrate-beads`) | `f50f1dc`, `51023d1` | none found |
+| `create` and `add-note` write exactly one final newline, including for CRLF input (also `ticket-migrate-beads`) | `f50f1dc`, `51023d1`, `64880fd` | none found |
 | `link` reports each new pair and rejects duplicate IDs | `186bef8`, `88c69a3` | none found |
 | `create --description-file/--design-file/--acceptance-file` and `--dry-run` | `f8bdb67`, `88c69a3` | [PR #55](https://github.com/wedow/ticket/pull/55) adds `-d -` for stdin |
 | `<command> --help` and `-h` | `0884cff`, `88c69a3` | none found |
@@ -67,6 +67,13 @@ Reviews found these and judged them not worth fixing yet. None affects the
   file list from stdin or in batches.
 - **CRLF tickets are invisible to listings.** Writers refuse them with a clear
   error. Supporting them would be a feature.
+- **CRLF inside text is kept.** `create` field files and `add-note` remove
+  trailing CRLF line breaks but keep any `\r` before an interior line break,
+  so multi-line CRLF input still fails `git diff --check`. Converting it would
+  rewrite user text. A CR before another CR at the end (`a\r\r\n`) or a lone
+  trailing CR is kept too, and stripping takes quadratic time in the number of
+  trailing line breaks (13 to 40 seconds for 20,000 CRLFs), which real input
+  never has.
 - **Values containing `": "` are cut short** by the listing readers, which split
   on `": "`. No real ticket has one.
 - **Partial ID lookup treats `*`, `?`, and `[` as glob characters.** Generated
